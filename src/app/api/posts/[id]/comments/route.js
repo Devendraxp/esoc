@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
 import Comment from '../../../../../models/Comment';
+import Post from '../../../../../models/Post';
+import User from '../../../../../models/User';
 
 // Database connection function
 async function connectToDatabase() {
@@ -23,28 +26,16 @@ export async function GET(request, { params }) {
     const postId = params.id;
     await connectToDatabase();
     
-    // For demo purposes - in production, you'd fetch from the database
-    // const comments = await Comment.find({ post: postId }).populate('author').sort({ createdAt: 1 });
+    // Fetch comments for the post from the database with authorDetails
+    const comments = await Comment.find({ post: postId })
+      .populate({
+        path: 'authorDetails',
+        select: 'clerkId profile_location role'
+      })
+      .sort({ createdAt: 1 });
     
-    // Sample data for demonstration
-    const sampleComments = [
-      {
-        _id: '101',
-        post: postId,
-        author: { clerkId: 'user_2', profile_location: 'Region 2' },
-        content: 'Thank you for sharing this information. It has been very helpful for our community.',
-        createdAt: new Date('2025-04-11T14:30:00').toISOString()
-      },
-      {
-        _id: '102',
-        post: postId,
-        author: { clerkId: 'user_3', profile_location: 'Region 3' },
-        content: 'Is there any way to volunteer and help with the distribution?',
-        createdAt: new Date('2025-04-12T09:15:00').toISOString()
-      }
-    ];
+    return NextResponse.json(comments);
     
-    return NextResponse.json(sampleComments);
   } catch (error) {
     console.error('Error fetching comments:', error);
     return NextResponse.json(
@@ -56,7 +47,37 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
+    const { userId } = getAuth(request);
     const postId = params.id;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { message: 'Unauthorized - You must be logged in to comment' },
+        { status: 401 }
+      );
+    }
+    
+    await connectToDatabase();
+    
+    // Check if user exists in our database, if not create a user
+    let user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      user = new User({
+        clerkId: userId,
+        role: 'normal'
+      });
+      await user.save();
+    }
+    
+    // Verify post exists
+    const post = await Post.findById(postId);
+    if (!post) {
+      return NextResponse.json(
+        { message: 'Post not found' },
+        { status: 404 }
+      );
+    }
+    
     const { content } = await request.json();
     
     if (!content || content.trim() === '') {
@@ -66,26 +87,23 @@ export async function POST(request, { params }) {
       );
     }
     
-    await connectToDatabase();
-    
-    // For demo purposes - in production, you'd create a comment in the database
-    // const comment = new Comment({
-    //   post: postId,
-    //   author: req.user._id, // From your auth middleware
-    //   content
-    // });
-    // await comment.save();
-    
-    // Sample response for demonstration
-    const sampleComment = {
-      _id: Math.random().toString(36).substring(7),
+    // Create and save the comment
+    const comment = new Comment({
       post: postId,
-      author: { clerkId: 'user_1', profile_location: 'Region 1' },
-      content,
-      createdAt: new Date().toISOString()
-    };
+      author: userId, // Now using Clerk userId directly
+      content: content.trim()
+    });
     
-    return NextResponse.json(sampleComment, { status: 201 });
+    await comment.save();
+    
+    // Return the comment with author information
+    const populatedComment = await Comment.findById(comment._id).populate({
+      path: 'authorDetails',
+      select: 'clerkId profile_location role'
+    });
+    
+    return NextResponse.json(populatedComment, { status: 201 });
+    
   } catch (error) {
     console.error('Error creating comment:', error);
     return NextResponse.json(

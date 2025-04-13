@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
-import Post from '../../../../models/Post';
-import User from '../../../../models/User';
+import User from '../../../../models/User.js';
 
 // Database connection function
 async function connectToDatabase() {
@@ -21,26 +21,25 @@ async function connectToDatabase() {
 
 export async function GET(request, { params }) {
   try {
-    const id = params.id;
+    const userId = params.id;
+    
     await connectToDatabase();
     
-    // Fetch the post from the database with complete author info
-    const post = await Post.findById(id).populate({
-      path: 'author',
-      model: User,
-      select: 'clerkId firstName lastName username email profileImageUrl profile_location bio role'
-    });
+    // Find the user by clerkId
+    const user = await User.findOne({ clerkId: userId });
     
-    if (!post) {
-      return NextResponse.json({ message: 'Post not found' }, { status: 404 });
+    if (!user) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
     }
     
-    return NextResponse.json(post);
-    
+    return NextResponse.json(user);
   } catch (error) {
-    console.error('Error fetching post:', error);
+    console.error('Error fetching user:', error);
     return NextResponse.json(
-      { message: 'Failed to fetch post', error: error.message },
+      { message: 'Failed to fetch user', error: error.message },
       { status: 500 }
     );
   }

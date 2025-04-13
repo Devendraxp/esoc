@@ -1,10 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useUser, useClerk, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import Card from './Card';
 
 const Sidebar = ({ userRole = 'normal' }) => {
   const pathname = usePathname();
+  const { isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
   
   // Navigation links
   const navItems = [
@@ -38,8 +42,59 @@ const Sidebar = ({ userRole = 'normal' }) => {
   };
 
   return (
-    <div className="fixed h-full w-64 bg-[#0a0a0a] border-r border-zinc-800 py-6 overflow-y-auto text-[#ededed]">
-      <div className="px-6 mb-8">
+    <div className="fixed left-0 top-0 h-full w-64 bg-[#0a0a0a] border-r border-zinc-800 py-6 overflow-y-auto text-[#ededed]">
+      <div className="px-6 mb-8 flex flex-col gap-4">
+        {/* User authentication section */}
+        {isSignedIn ? (
+          <div className="flex flex-col items-center space-y-3 mb-4 pt-1">
+            <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-primary">
+              {user.imageUrl && (
+                <Image
+                  src={user.imageUrl}
+                  alt={user.fullName || "User"}
+                  fill
+                  className="object-cover"
+                />
+              )}
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-primary">{user.fullName || user.username || "User"}</p>
+              <p className="text-xs text-zinc-400">{user.primaryEmailAddress?.emailAddress}</p>
+            </div>
+            
+            <div className="flex gap-2 w-full">
+              <Link 
+                href="/profile" 
+                className="flex-1 text-center py-1 text-xs rounded-md bg-zinc-800 hover:bg-zinc-700 transition"
+              >
+                Profile
+              </Link>
+              <button 
+                onClick={() => signOut()}
+                className="flex-1 text-center py-1 text-xs rounded-md bg-zinc-800 hover:bg-zinc-700 transition"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 mb-4">
+            <div className="flex justify-center gap-3">
+              <SignInButton mode="modal">
+                <button className="px-4 py-2 text-sm rounded-md bg-zinc-800 hover:bg-zinc-700 transition">
+                  Sign In
+                </button>
+              </SignInButton>
+              
+              <SignUpButton mode="modal">
+                <button className="px-4 py-2 text-sm rounded-md bg-primary hover:bg-primary/80 transition">
+                  Sign Up
+                </button>
+              </SignUpButton>
+            </div>
+          </div>
+        )}
+        
         <h2 className="text-xl font-bold text-[#ededed]">ESOC App</h2>
       </div>
       

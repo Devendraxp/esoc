@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
 import Post from '../../../models/Post';
+import User from '../../../models/User';
+import { uploadMedia } from '../../../utils/cloudinary';
 
 // Database connection function
 async function connectToDatabase() {
@@ -12,10 +14,14 @@ async function connectToDatabase() {
   const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/esoc-app';
   
   try {
+    // Set strictQuery to prepare for Mongoose 7
+    mongoose.set('strictQuery', false);
+    
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
+    throw error;
   }
 }
 
@@ -23,43 +29,16 @@ export async function GET(request) {
   try {
     await connectToDatabase();
     
-    // Sample data for demonstration - remove this in production
-    // and only rely on the actual database query below
-    const samplePosts = [
-      {
-        _id: '1',
-        content: 'This is a sample post with important community updates. Stay informed about developments in our region.',
-        author: { clerkId: 'user_1', profile_location: 'Region 1' },
-        createdAt: new Date('2025-04-10T12:00:00'),
-        likes: ['user_2', 'user_3'],
-        media: []
-      },
-      {
-        _id: '2',
-        content: 'Were organizing aid distribution tomorrow at Central Square. Please bring valid ID if youre collecting supplies.',
-        author: { clerkId: 'user_2', profile_location: 'Region 2' },
-        createdAt: new Date('2025-04-11T09:30:00'),
-        likes: ['user_1'],
-        media: [{ type: 'image', url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809' }]
-      },
-      {
-        _id: '3',
-        content: 'Water purification systems are now operational in the western district. Residents can access clean water at designated points.',
-        author: { clerkId: 'user_3', profile_location: 'Region 3' },
-        createdAt: new Date('2025-04-12T14:15:00'),
-        likes: [],
-        media: [
-          { type: 'image', url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809' },
-          { type: 'document', url: '/water-safety-guide.pdf' }
-        ]
-      }
-    ];
-
-    // Fetch posts from the database
-    // In a real app, use the actual database query
-    const posts = await Post.find().populate('author').sort({ createdAt: -1 }).limit(10);
+    // Fetch posts from the database with complete author information
+    const posts = await Post.find()
+      .populate({
+        path: 'author',
+        model: User,
+        select: 'clerkId firstName lastName username email profileImageUrl profile_location bio role'
+      })
+      .sort({ createdAt: -1 })
+      .limit(10);
     
-    // Return posts (sample data for now)
     return NextResponse.json(posts);
     
   } catch (error) {
@@ -84,6 +63,16 @@ export async function POST(request) {
     
     await connectToDatabase();
     
+    // Check if user exists in our database, if not create a user
+    let user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      user = new User({
+        clerkId: userId,
+        role: 'normal'
+      });
+      await user.save();
+    }
+    
     // For multipart form data
     const formData = await request.formData();
     const content = formData.get('content');
@@ -99,28 +88,45 @@ export async function POST(request) {
     const mediaFiles = formData.getAll('media');
     const media = [];
     
-    // In a real app, you'd upload these files to a storage service
-    // and store their URLs in the database
-    for (const file of mediaFiles) {
-      // Simplified for demo - in a real app, upload to S3, Cloudinary, etc.
-      const fileType = file.type.split('/')[0];
-      media.push({
-        type: fileType,
-        url: `/uploads/${Date.now()}-${file.name}` // Example path
-      });
+    // Upload files to Cloudinary
+    if (mediaFiles && mediaFiles.length > 0) {
+      for (const file of mediaFiles) {
+        if (file.size > 0) {
+          try {
+            // Upload to Cloudinary and get the URL
+            const uploadedMedia = await uploadMedia(file);
+            media.push({
+              type: uploadedMedia.type,
+              url: uploadedMedia.url,
+              public_id: uploadedMedia.public_id
+            });
+          } catch (uploadError) {
+            console.error('Error uploading media:', uploadError);
+          }
+        }
+      }
     }
-const post = new Post({
-      author: userId,
-      content,
+    
+    // Create and save the post with reference to user document (not just clerkId)
+    const post = new Post({
+      author: user._id, // Use the MongoDB user _id 
+      content: content.trim(),
       media,
       likes: [],
       reports: [],
       fakeScore: 0
     });
-    await post.save();
-
     
-    return NextResponse.json(post, { status: 201 });
+    await post.save();
+    
+    // Populate the author details before returning
+    const populatedPost = await Post.findById(post._id).populate({
+      path: 'author',
+      model: User,
+      select: 'clerkId firstName lastName username email profileImageUrl profile_location bio role'
+    });
+    
+    return NextResponse.json(populatedPost, { status: 201 });
   } catch (error) {
     console.error('Error creating post:', error);
     return NextResponse.json(

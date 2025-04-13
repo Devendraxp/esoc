@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import useSWR, { mutate } from 'swr';
+import { useUser } from '@clerk/nextjs';
 
 import Container from '../../../components/Container';
 import Sidebar from '../../../components/Sidebar';
@@ -18,11 +19,15 @@ const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function PostDetail({ params }) {
   const router = useRouter();
-  const id = params.id;
+  // Unwrap params using React.use() to fix the warning
+  const unwrappedParams = React.use(params);
+  const id = unwrappedParams.id;
+  const { isSignedIn, user } = useUser();
   
   // State for new comment
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authorDetails, setAuthorDetails] = useState(null);
 
   // SWR for real-time updates
   const { data: post, error: postError, isLoading: postLoading } = useSWR(
@@ -34,9 +39,33 @@ export default function PostDetail({ params }) {
     `/api/posts/${id}/comments`,
     fetcher
   );
+  
+  // Fetch author details when post loads
+  useEffect(() => {
+    if (post?.author?.clerkId) {
+      const fetchAuthor = async () => {
+        try {
+          const response = await fetch(`/api/users/${post.author.clerkId}`);
+          if (response.ok) {
+            const userData = await response.json();
+            setAuthorDetails(userData);
+          }
+        } catch (error) {
+          console.error('Error fetching author details:', error);
+        }
+      };
+      
+      fetchAuthor();
+    }
+  }, [post]);
 
   // Handle like post
   const handleLike = async () => {
+    if (!isSignedIn) {
+      alert('Please sign in to like posts');
+      return;
+    }
+    
     try {
       await fetch(`/api/posts/${id}/like`, {
         method: 'POST',
@@ -49,8 +78,32 @@ export default function PostDetail({ params }) {
     }
   };
 
+  // Handle dislike post
+  const handleDislike = async () => {
+    if (!isSignedIn) {
+      alert('Please sign in to dislike posts');
+      return;
+    }
+    
+    try {
+      await fetch(`/api/posts/${id}/dislike`, {
+        method: 'POST',
+      });
+      
+      // Revalidate post data
+      mutate(`/api/posts/${id}`);
+    } catch (error) {
+      console.error('Error disliking post:', error);
+    }
+  };
+
   // Handle report post
   const handleReport = async () => {
+    if (!isSignedIn) {
+      alert('Please sign in to report posts');
+      return;
+    }
+    
     try {
       // Show a simple browser prompt to get the reason
       const reason = prompt('Why are you reporting this post?', 'fake');
@@ -74,6 +127,11 @@ export default function PostDetail({ params }) {
   // Handle submit comment
   const handleSubmitComment = async (e) => {
     e.preventDefault();
+    
+    if (!isSignedIn) {
+      alert('Please sign in to comment');
+      return;
+    }
     
     if (!commentText.trim()) return;
     
@@ -158,6 +216,17 @@ export default function PostDetail({ params }) {
     );
   };
 
+  // Get the author's displayable name
+  const getAuthorDisplayName = () => {
+    if (authorDetails?.firstName && authorDetails?.lastName) {
+      return `${authorDetails.firstName} ${authorDetails.lastName}`;
+    } else if (authorDetails?.username) {
+      return authorDetails.username;
+    } else {
+      return post?.author?.clerkId || 'Anonymous';
+    }
+  };
+
   if (postLoading) {
     return (
       <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
@@ -217,32 +286,86 @@ export default function PostDetail({ params }) {
         <main className="p-8">
           <Container className="py-6">
             <Card className="mb-8">
-              <div className="mb-6 flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-[#ededed]">
-                    {post.author?.clerkId || 'Anonymous'}
-                  </p>
-                  <p className="text-xs text-zinc-400">
-                    {post.createdAt ? format(new Date(post.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}
-                    {post.author?.profile_location && ` • ${post.author.profile_location}`}
-                  </p>
-                </div>
-                <div className="flex space-x-3">
-                  <Button 
-                    variant="secondary" 
-                    onClick={handleLike}
-                    className="text-sm flex items-center space-x-2 bg-zinc-800 hover:bg-zinc-700"
-                  >
-                    <span>❤️</span>
-                    <span>{post.likes?.length || 0}</span>
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    onClick={handleReport}
-                    className="text-sm bg-zinc-800 hover:bg-zinc-700"
-                  >
-                    Report
-                  </Button>
+              <div className="mb-6">
+                <div className="flex items-start space-x-3">
+                  {/* Author Profile Image */}
+                  <div className="relative flex-shrink-0 h-12 w-12 rounded-full overflow-hidden border border-zinc-700">
+                    {authorDetails?.profileImageUrl ? (
+                      <Image 
+                        src={authorDetails.profileImageUrl} 
+                        alt={getAuthorDisplayName()}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-zinc-800 flex items-center justify-center text-zinc-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-md font-medium text-[#ededed]">
+                          {getAuthorDisplayName()}
+                        </p>
+                        <div className="flex items-center text-xs text-zinc-400 space-x-2">
+                          <span>{post.createdAt ? format(new Date(post.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}</span>
+                          {(authorDetails?.profile_location || post.author?.profile_location) && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                {authorDetails?.profile_location || post.author?.profile_location}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-4">
+                        <button 
+                          onClick={handleLike}
+                          className={`flex items-center hover:text-green-400 transition ${
+                            post.likes?.includes(user?.id) ? 'text-green-400' : 'text-zinc-400'
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 mr-2">
+                            <path d="M7.493 18.75c-.425 0-.82-.236-.975-.632A7.48 7.48 0 016 15.375c0-1.75.599-3.358 1.602-4.634.151-.192.373-.309.6-.397.473-.183.89-.514 1.212-.924a9.042 9.042 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266-.558.107-1.282.725-1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H14.23c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23h-.777zM2.331 10.977a11.969 11.969 0 00-.831 4.398 12 12 0 00.52 3.507c.26.85 1.084 1.368 1.973 1.368H4.9c.445 0 .72-.498.523-.898a8.963 8.963 0 01-.924-3.977c0-1.708.476-3.305 1.302-4.666.245-.403-.028-.959-.5-.959H4.25c-.832 0-1.612.453-1.918 1.227z" />
+                          </svg>
+                          <span>{post.likes?.length || 0}</span>
+                        </button>
+                        
+                        <button 
+                          onClick={handleDislike}
+                          className={`flex items-center hover:text-red-400 transition ${
+                            post.dislikes?.includes(user?.id) ? 'text-red-400' : 'text-zinc-400'
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 mr-2">
+                            <path d="M15.73 5.25h1.035A7.465 7.465 0 0118 9.375a7.465 7.465 0 01-1.235 4.125h-.148c-.806 0-1.534.446-2.031 1.08a9.04 9.04 0 01-2.861 2.4c-.723.384-1.35-.956-1.653 1.715a4.498 4.498 0 00-.322 1.672V21a.75.75 0 01-.75.75 2.25 2.25 0 01-2.25-2.25c0-1.152.26-2.243.723-3.218.266-.558-.107-1.282-.725-1.282H3.622c-1.026 0-1.945-.694-2.054-1.715A12.134 12.134 0 011.5 12c0-2.848.992-5.464 2.649-7.521.388-.482.987-.729 1.605-.729H9.77a4.5 4.5 0 011.423.23l3.114 1.04a4.5 4.5 0 001.423.23zM21.669 13.773c.536-1.362.831-2.845.831-4.398 0-1.22-.182-2.398-.52-3.507-.26-.85-1.084-1.368-1.973-1.368H19.1c-.445 0-.72.498-.523.898.591 1.2.924 2.55.924 3.977a8.959 8.959 0 01-1.302 4.666c-.245.403.028.959.5.959h1.053c.832 0 1.612-.453 1.918-1.227z" />
+                          </svg>
+                          <span>{post.dislikes?.length || 0}</span>
+                        </button>
+                        
+                        <button 
+                          onClick={handleReport}
+                          className="flex items-center text-zinc-400 hover:text-yellow-400 transition"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 mr-2">
+                            <path fillRule="evenodd" d="M3 2.25a.75.75 0 01.75.75v.54l1.838-.46a9.75 9.75 0 016.725.738l.108.054a8.25 8.25 0 005.58.652l3.109-.732a.75.75 0 01.917.81 47.784 47.784 0 00.005 10.337.75.75 0 01-.574.812l-3.114.733a9.75 9.75 0 01-6.594-.77l-.108-.054a8.25 8.25 0 00-5.69-.625l-2.202.55V21a.75.75 0 01-1.5 0V3A.75.75 0 013 2.25z" clipRule="evenodd" />
+                          </svg>
+                          <span>Report</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -273,11 +396,14 @@ export default function PostDetail({ params }) {
                   />
                   <Button 
                     type="submit" 
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !isSignedIn}
                   >
                     {isSubmitting ? 'Sending...' : 'Reply'}
                   </Button>
                 </div>
+                {!isSignedIn && (
+                  <p className="mt-2 text-xs text-zinc-500">Please sign in to leave a comment</p>
+                )}
               </form>
 
               {/* Comments list */}
@@ -300,19 +426,47 @@ export default function PostDetail({ params }) {
               )}
 
               <div className="space-y-6">
-                {comments && comments.map((comment) => (
-                  <Card key={comment._id} className="border border-zinc-800">
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-[#ededed]">
-                        {comment.author?.clerkId || 'Anonymous'}
-                      </p>
-                      <p className="text-xs text-zinc-400">
-                        {comment.createdAt ? format(new Date(comment.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}
-                      </p>
-                    </div>
-                    <p className="text-[#ededed]">{comment.content}</p>
-                  </Card>
-                ))}
+                {comments && comments.map((comment) => {
+                  // Get the comment author's data
+                  const commentAuthor = comment.authorDetails || { clerkId: comment.author?.clerkId };
+                  
+                  return (
+                    <Card key={comment._id} className="border border-zinc-800">
+                      <div className="flex items-start space-x-3 mb-3">
+                        {/* Comment Author Profile Image */}
+                        <div className="relative flex-shrink-0 h-8 w-8 rounded-full overflow-hidden border border-zinc-700">
+                          {commentAuthor.profileImageUrl ? (
+                            <Image 
+                              src={commentAuthor.profileImageUrl} 
+                              alt={commentAuthor.firstName || commentAuthor.clerkId || 'User'}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-zinc-800 flex items-center justify-center text-zinc-500">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm font-medium text-[#ededed]">
+                            {commentAuthor.firstName && commentAuthor.lastName 
+                              ? `${commentAuthor.firstName} ${commentAuthor.lastName}`
+                              : commentAuthor.username || commentAuthor.clerkId || 'Anonymous'}
+                          </p>
+                          <p className="text-xs text-zinc-400">
+                            {comment.createdAt ? format(new Date(comment.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}
+                            {commentAuthor.profile_location && ` • ${commentAuthor.profile_location}`}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-[#ededed]">{comment.content}</p>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           </Container>

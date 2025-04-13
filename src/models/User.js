@@ -6,6 +6,21 @@ const UserSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  username: {
+    type: String
+  },
+  firstName: {
+    type: String
+  },
+  lastName: {
+    type: String
+  },
+  email: {
+    type: String
+  },
+  profileImageUrl: {
+    type: String
+  },
   role: {
     type: String,
     enum: ['normal', 'special', 'admin'],
@@ -13,6 +28,10 @@ const UserSchema = new mongoose.Schema({
   },
   profile_location: {
     type: String
+  },
+  bio: {
+    type: String,
+    maxlength: 160
   },
   joinedAt: {
     type: Date,

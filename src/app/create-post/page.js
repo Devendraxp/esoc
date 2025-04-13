@@ -90,22 +90,24 @@ export default function CreatePost() {
     setError('');
     
     try {
-      // In a real application, you'd use FormData to upload files
+      // Create FormData to upload files
       const formData = new FormData();
       formData.append('content', content);
       mediaFiles.forEach(file => formData.append('media', file));
       
-      // For demo purposes, we'll just simulate a successful post
-      // const response = await fetch('/api/posts', {
-      //   method: 'POST',
-      //   body: formData
-      // });
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        body: formData
+      });
       
-      // Simulate a delay for the demo
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create post');
+      }
       
       // Clear form after successful submission
       setContent('');
+      setMediaFiles([]);
       
       // Revoke all object URLs to avoid memory leaks
       previewUrls.forEach(item => {
@@ -113,169 +115,125 @@ export default function CreatePost() {
           URL.revokeObjectURL(item.url);
         }
       });
-      
-      setMediaFiles([]);
       setPreviewUrls([]);
       
       // Redirect to home page
       router.push('/');
+      router.refresh();
+      
     } catch (error) {
-      setError('Failed to create post. Please try again.');
-      console.error('Error creating post:', error);
+      setError(error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  return (
-    <>
-      <SignedIn>
-        <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
-          {/* Sidebar */}
-          <Sidebar />
-
-          {/* Main content */}
-          <div className="flex-1 ml-64">
-            <header className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800 p-4 flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-[#ededed]">Create Post</h1>
-              <ThemeToggle />
-            </header>
-
-            <main className="p-8">
-              <Container className="py-6">
-                <Card className="mb-6">
-                  <form onSubmit={handleSubmit}>
-                    <div className="mb-6">
-                      <label htmlFor="content" className="block text-sm font-medium text-[#ededed] mb-2">
-                        Post Content
-                      </label>
-                      <textarea
-                        id="content"
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        rows={5}
-                        className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-[#ededed] focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Share important information with your community..."
-                      />
-                    </div>
-                    
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-[#ededed] mb-2">
-                        Media Attachments
-                      </label>
-                      <div className="flex items-center">
-                        <label className="cursor-pointer bg-zinc-800 px-4 py-2 rounded-md hover:bg-zinc-700 text-[#ededed]">
-                          <span>Add Files</span>
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
-                            onChange={handleFileChange}
-                            className="hidden"
-                          />
-                        </label>
-                        <span className="ml-3 text-sm text-zinc-400">
-                          Add images, videos, audio, or documents
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Preview area for selected files */}
-                    {previewUrls.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-medium text-[#ededed] mb-3">
-                          Selected Files ({previewUrls.length})
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                          {previewUrls.map((item, index) => (
-                            <div 
-                              key={index} 
-                              className="relative bg-zinc-900 rounded-md overflow-hidden border border-zinc-800"
-                            >
-                              {item.type === 'image' && (
-                                <div className="h-32 w-full relative">
-                                  <img
-                                    src={item.url}
-                                    alt={item.name}
-                                    className="h-full w-full object-cover"
-                                  />
-                                </div>
-                              )}
-                              {item.type === 'video' && (
-                                <div className="h-32 w-full relative bg-black flex items-center justify-center">
-                                  <video
-                                    src={item.url}
-                                    className="h-full w-full object-contain"
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="bg-black bg-opacity-50 text-[#ededed] px-2 py-1 rounded-md text-xs">
-                                      Video
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-                              {item.type === 'audio' && (
-                                <div className="h-32 w-full flex items-center justify-center bg-blue-900/20">
-                                  <span className="text-blue-300">
-                                    Audio File
-                                  </span>
-                                </div>
-                              )}
-                              {item.type === 'document' && (
-                                <div className="h-32 w-full flex items-center justify-center bg-zinc-800">
-                                  <span className="text-[#ededed]">
-                                    Document
-                                  </span>
-                                </div>
-                              )}
-                              <div className="p-3 text-xs truncate text-[#ededed]">
-                                {item.name}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeFile(index)}
-                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
-                                aria-label="Remove file"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {error && (
-                      <div className="mb-6 bg-red-900/20 text-red-300 p-4 rounded-md text-sm">
-                        {error}
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-end space-x-4 mt-8">
-                      <Button
-                        variant="secondary"
-                        type="button"
-                        onClick={() => router.push('/')}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? 'Creating...' : 'Create Post'}
-                      </Button>
-                    </div>
-                  </form>
-                </Card>
-              </Container>
-            </main>
-          </div>
+  // Render file previews
+  const renderPreviews = () => {
+    return previewUrls.map((item, index) => (
+      <div key={index} className="relative mb-4 p-2 bg-zinc-800 rounded-lg">
+        <div className="flex items-center">
+          {item.type === 'image' ? (
+            <img src={item.url} alt={item.name} className="w-16 h-16 object-cover rounded mr-2" />
+          ) : (
+            <div className="w-16 h-16 flex items-center justify-center bg-zinc-700 rounded mr-2">
+              {item.type === 'video' ? '🎬' : item.type === 'audio' ? '🔊' : '📄'}
+            </div>
+          )}
+          <div className="flex-1 truncate">{item.name}</div>
+          <button 
+            type="button" 
+            onClick={() => removeFile(index)}
+            className="ml-2 text-red-500 hover:text-red-400"
+          >
+            ✕
+          </button>
         </div>
-      </SignedIn>
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
+      </div>
+    ));
+  };
+  
+  return (
+    <Container noPadding={true} fullWidth={true} className="p-0 overflow-hidden rounded-none border-0">
+      <div className="flex">
+        <Sidebar />
+        
+        <main className="flex-1 pl-64 py-8 pr-4 sm:pr-6 lg:pr-8">
+          <SignedIn>
+            <div className="mb-6 flex justify-between items-center px-4 sm:px-6 lg:px-8">
+              <h1 className="text-2xl font-semibold text-[#ededed]">Create Post</h1>
+              <ThemeToggle />
+            </div>
+            
+            <Card className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+              {error && (
+                <div className="mb-4 p-3 bg-red-900/20 border border-red-900 rounded-lg text-red-400">
+                  {error}
+                </div>
+              )}
+              
+              <form onSubmit={handleSubmit}>
+                <div className="mb-6">
+                  <label htmlFor="content" className="block mb-2 text-sm font-medium text-[#ededed]">
+                    Post Content
+                  </label>
+                  <textarea
+                    id="content"
+                    rows="6"
+                    className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-[#ededed] focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Share information, updates, or resources..."
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block mb-2 text-sm font-medium text-[#ededed]">
+                    Add Media (Optional)
+                  </label>
+                  <div className="flex items-center">
+                    <label className="flex items-center px-4 py-2 bg-zinc-700 text-[#ededed] rounded-lg cursor-pointer hover:bg-zinc-600 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Add Files
+                      <input 
+                        type="file" 
+                        multiple 
+                        onChange={handleFileChange} 
+                        className="hidden" 
+                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+                      />
+                    </label>
+                    <span className="ml-4 text-sm text-[#a1a1aa]">
+                      {mediaFiles.length} file{mediaFiles.length !== 1 ? 's' : ''} selected
+                    </span>
+                  </div>
+                  
+                  <div className="mt-4">
+                    {renderPreviews()}
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    className="px-6 py-2"
+                  >
+                    {isSubmitting ? 'Posting...' : 'Post'}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </SignedIn>
+          
+          <SignedOut>
+            <RedirectToSignIn />
+          </SignedOut>
+        </main>
+      </div>
+    </Container>
   );
 }

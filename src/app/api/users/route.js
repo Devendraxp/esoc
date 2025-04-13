@@ -19,6 +19,7 @@ async function connectToDatabase() {
   }
 }
 
+// GET all users (admin only)
 export async function GET(request) {
   try {
     const { userId } = getAuth(request);
@@ -32,72 +33,76 @@ export async function GET(request) {
     
     await connectToDatabase();
     
-    // For demo purposes - in production, you'd fetch from the database
-    // const currentUser = await User.findOne({ clerkId: userId });
-    // 
-    // if (!currentUser || currentUser.role !== 'admin') {
-    //   return NextResponse.json(
-    //     { message: 'Unauthorized - Admin access required' },
-    //     { status: 403 }
-    //   );
-    // }
-    // 
-    // const users = await User.find().sort({ createdAt: -1 });
+    // Find the current user to check if they're an admin
+    const currentUser = await User.findOne({ clerkId: userId });
     
-    // Sample data for demonstration
-    const sampleUsers = [
-      {
-        id: 'user_1',
-        clerkId: 'user_1',
-        name: 'Admin User',
-        email: 'admin@example.com',
-        role: 'admin',
-        profile_location: 'Global',
-        createdAt: new Date('2025-03-15T10:00:00')
-      },
-      {
-        id: 'user_2',
-        clerkId: 'user_2',
-        name: 'Special Responder',
-        email: 'responder@example.com',
-        role: 'special',
-        profile_location: 'Eastern District',
-        createdAt: new Date('2025-03-20T14:30:00')
-      },
-      {
-        id: 'user_3',
-        clerkId: 'user_3',
-        name: 'Regular User 1',
-        email: 'user1@example.com',
-        role: 'user',
-        profile_location: 'Western District',
-        createdAt: new Date('2025-03-25T09:15:00')
-      },
-      {
-        id: 'user_4',
-        clerkId: 'user_4',
-        name: 'Regular User 2',
-        email: 'user2@example.com',
-        role: 'user',
-        profile_location: 'Northern Community',
-        createdAt: new Date('2025-04-01T16:45:00')
-      },
-      {
-        id: 'user_5',
-        clerkId: 'user_5',
-        name: 'Special Responder 2',
-        email: 'responder2@example.com',
-        role: 'special',
-        profile_location: 'Region 1',
-        createdAt: new Date('2025-04-05T11:20:00')
-      }
-    ];
+    if (!currentUser || currentUser.role !== 'admin') {
+      return NextResponse.json(
+        { message: 'Unauthorized - Admin access required' },
+        { status: 403 }
+      );
+    }
     
-    return NextResponse.json(sampleUsers);
+    // Get all users from the database
+    const users = await User.find().sort({ createdAt: -1 });
+    
+    return NextResponse.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(
       { message: 'Failed to fetch users', error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// POST to sync or create user from Clerk data
+export async function POST(request) {
+  try {
+    const { userId } = getAuth(request);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    await connectToDatabase();
+    
+    // Get user data from request body
+    const userData = await request.json();
+    
+    // Look for existing user
+    let user = await User.findOne({ clerkId: userId });
+    
+    if (user) {
+      // Update existing user
+      user = await User.findOneAndUpdate(
+        { clerkId: userId },
+        { 
+          $set: { 
+            ...userData,
+            lastActiveAt: new Date() 
+          } 
+        },
+        { new: true }
+      );
+    } else {
+      // Create new user
+      user = await User.create({
+        clerkId: userId,
+        ...userData,
+        joinedAt: new Date(),
+        lastActiveAt: new Date()
+      });
+    }
+    
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error('Error syncing user data:', error);
+    return NextResponse.json(
+      { message: 'Failed to sync user data', error: error.message },
       { status: 500 }
     );
   }
