@@ -26,10 +26,12 @@ export default function ProfilePage() {
     bio: ''
   });
   
+  // State for user data and loading
   const [dbUser, setDbUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [userRole, setUserRole] = useState('normal');
 
   // Load user data when component mounts
   useEffect(() => {
@@ -60,6 +62,7 @@ export default function ProfilePage() {
       if (response.ok) {
         const userData = await response.json();
         setDbUser(userData);
+        setUserRole(userData.role || 'normal'); // Set user role
         
         // Update form with data from our database
         setFormData(prevData => ({
@@ -67,6 +70,17 @@ export default function ProfilePage() {
           profile_location: userData.profile_location || '',
           bio: userData.bio || ''
         }));
+      }
+      
+      // Fetch user role from auth/me endpoint as backup
+      try {
+        const authResponse = await fetch('/api/auth/me');
+        if (authResponse.ok) {
+          const authData = await authResponse.json();
+          setUserRole(authData.role);
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -167,7 +181,7 @@ export default function ProfilePage() {
   if (!isLoaded || isLoading) {
     return (
       <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
-        <Sidebar />
+        <Sidebar userRole={userRole} />
         <div className="flex-1 ml-64 p-8">
           <Container>
             <div className="flex justify-center items-center h-40">
@@ -182,7 +196,7 @@ export default function ProfilePage() {
   if (!isSignedIn) {
     return (
       <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
-        <Sidebar />
+        <Sidebar userRole={userRole} />
         <div className="flex-1 ml-64 p-8">
           <Container>
             <Card className="bg-red-900/20 text-red-300 border border-red-800">
@@ -203,7 +217,7 @@ export default function ProfilePage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar userRole={userRole} />
 
       {/* Main content */}
       <div className="flex-1 ml-64">

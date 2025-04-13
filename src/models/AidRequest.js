@@ -11,11 +11,23 @@ const AidRequestSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['pending', 'approved', 'denied'],
+    enum: ['pending', 'approved', 'denied', 'received', 'prepared', 'shipped', 'delivered'],
     default: 'pending'
   },
   adminNote: {
     type: String
+  },
+  requesterRole: {
+    type: String,
+    enum: ['normal', 'special', 'admin'],
+    default: 'normal'
+  },
+  respondedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  respondedAt: {
+    type: Date
   }
 }, { timestamps: true });
 

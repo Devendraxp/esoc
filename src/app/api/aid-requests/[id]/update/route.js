@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
-import AidRequest from '../../../../../models/AidRequest.js';
+import AidRequest from '../../../../../models/AidRequest';
+import User from '../../../../../models/User';
 
 // Database connection function
 async function connectToDatabase() {
@@ -19,7 +20,7 @@ async function connectToDatabase() {
   }
 }
 
-export async function POST(request, { params }) {
+export async function PATCH(request, { params }) {
   try {
     const { userId } = getAuth(request);
     
@@ -31,11 +32,19 @@ export async function POST(request, { params }) {
     }
     
     const id = params.id;
+    const { status, note } = await request.json();
+    
+    if (!status || !['received', 'prepared', 'shipped', 'delivered'].includes(status)) {
+      return NextResponse.json(
+        { message: 'Invalid status provided' },
+        { status: 400 }
+      );
+    }
     
     await connectToDatabase();
     
     // Find the current user to check if they're special or admin
-    const user = await mongoose.model('User').findOne({ clerkId: userId });
+    const user = await User.findOne({ clerkId: userId });
     
     if (!user || (user.role !== 'special' && user.role !== 'admin')) {
       return NextResponse.json(
@@ -54,27 +63,42 @@ export async function POST(request, { params }) {
       );
     }
     
-    if (aidRequest.status !== 'pending') {
+    // Only the responder or an admin can update the status
+    if (user.role !== 'admin' && 
+        (!aidRequest.respondedBy || aidRequest.respondedBy.toString() !== user._id.toString())) {
       return NextResponse.json(
-        { message: `This aid request is already ${aidRequest.status}` },
+        { message: 'You can only update aid requests that you have approved' },
+        { status: 403 }
+      );
+    }
+    
+    // Check if the aid request is in an appropriate state to be updated
+    if (aidRequest.status !== 'approved' && 
+        !['received', 'prepared', 'shipped'].includes(aidRequest.status)) {
+      return NextResponse.json(
+        { message: `Cannot update from status '${aidRequest.status}' to '${status}'` },
         { status: 400 }
       );
     }
     
-    aidRequest.status = 'approved';
-    aidRequest.respondedBy = user._id; // Use MongoDB _id
-    aidRequest.respondedAt = new Date();
+    // Update the aid request
+    aidRequest.status = status;
+    
+    // Update note if provided
+    if (note && note.trim() !== '') {
+      aidRequest.adminNote = note;
+    }
     
     await aidRequest.save();
     
     return NextResponse.json({ 
-      message: 'Aid request approved successfully',
+      message: `Aid request status updated to ${status} successfully`,
       id
     });
   } catch (error) {
-    console.error('Error approving aid request:', error);
+    console.error('Error updating aid request status:', error);
     return NextResponse.json(
-      { message: 'Failed to approve aid request', error: error.message },
+      { message: 'Failed to update aid request status', error: error.message },
       { status: 500 }
     );
   }

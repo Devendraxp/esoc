@@ -1,5 +1,31 @@
 import mongoose from 'mongoose';
 
+const UpgradeRequestSchema = new mongoose.Schema({
+  organization: {
+    type: String,
+    required: true
+  },
+  reason: {
+    type: String
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  requestedAt: {
+    type: Date,
+    default: Date.now
+  },
+  reviewedAt: {
+    type: Date
+  },
+  reviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }
+}, { _id: false });
+
 const UserSchema = new mongoose.Schema({
   clerkId: {
     type: String,
@@ -40,7 +66,8 @@ const UserSchema = new mongoose.Schema({
   lastActiveAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  upgradeRequest: UpgradeRequestSchema
 }, { timestamps: true });
 
 // Create index on clerkId for faster lookups

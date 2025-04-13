@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
-import User from '../../../../../models/User';
+import User from '../../../../models/User';
 
 // Database connection function
 async function connectToDatabase() {
@@ -19,7 +19,7 @@ async function connectToDatabase() {
   }
 }
 
-export async function POST(request, { params }) {
+export async function GET(request) {
   try {
     const { userId } = getAuth(request);
     
@@ -30,10 +30,9 @@ export async function POST(request, { params }) {
       );
     }
     
-    const userIdToDemote = params.id;
-    
     await connectToDatabase();
     
+    // Verify the current user is an admin
     const adminUser = await User.findOne({ clerkId: userId });
     
     if (!adminUser || adminUser.role !== 'admin') {
@@ -43,34 +42,20 @@ export async function POST(request, { params }) {
       );
     }
     
-    const userToDemote = await User.findOne({ clerkId: userIdToDemote });
+    // Get status parameter if any
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status') || 'pending';
     
-    if (!userToDemote) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
-      );
-    }
+    // Find all users with upgrade requests matching the status
+    const users = await User.find({
+      'upgradeRequest.status': status
+    }).select('clerkId username firstName lastName email profileImageUrl profile_location upgradeRequest');
     
-    // Cannot demote other admins
-    if (userToDemote.role === 'admin') {
-      return NextResponse.json(
-        { message: 'Cannot demote admin users' },
-        { status: 400 }
-      );
-    }
-    
-    userToDemote.role = 'normal';
-    await userToDemote.save();
-    
-    return NextResponse.json({ 
-      message: 'User demoted to regular user successfully',
-      id: userIdToDemote
-    });
+    return NextResponse.json(users);
   } catch (error) {
-    console.error(`Error demoting user:`, error);
+    console.error('Error fetching upgrade requests:', error);
     return NextResponse.json(
-      { message: 'Failed to demote user', error: error.message },
+      { message: 'Failed to fetch upgrade requests', error: error.message },
       { status: 500 }
     );
   }

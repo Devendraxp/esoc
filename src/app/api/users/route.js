@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
+import { getAuth, clerkClient } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
 import User from '../../../models/User';
+import { syncUserWithClerk } from '../../../utils/clerk-helpers';
 
 // Database connection function
 async function connectToDatabase() {
@@ -71,10 +72,25 @@ export async function POST(request) {
     await connectToDatabase();
     
     // Get user data from request body
-    const userData = await request.json();
+    const formData = await request.json();
+    
+    // Fetch the user data directly from Clerk to get the most up-to-date info
+    const clerkUser = await clerkClient.users.getUser(userId);
     
     // Look for existing user
     let user = await User.findOne({ clerkId: userId });
+    
+    // Sync user data from Clerk, including email
+    const syncedUserData = await syncUserWithClerk(clerkUser, user);
+    
+    // Merge synced data from Clerk with form data
+    // This ensures we get email from Clerk while respecting any updates from the form
+    const mergedData = {
+      ...syncedUserData,
+      ...formData,
+      // Always keep the email from Clerk
+      email: syncedUserData.email
+    };
     
     if (user) {
       // Update existing user
@@ -82,7 +98,7 @@ export async function POST(request) {
         { clerkId: userId },
         { 
           $set: { 
-            ...userData,
+            ...mergedData,
             lastActiveAt: new Date() 
           } 
         },
@@ -91,8 +107,7 @@ export async function POST(request) {
     } else {
       // Create new user
       user = await User.create({
-        clerkId: userId,
-        ...userData,
+        ...mergedData,
         joinedAt: new Date(),
         lastActiveAt: new Date()
       });

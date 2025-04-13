@@ -42,27 +42,27 @@ export async function POST(request, { params }) {
     
     await connectToDatabase();
     
-    // For demo purposes - in production, you'd update the database
-    // const adminUser = await User.findOne({ clerkId: userId });
-    // 
-    // if (!adminUser || adminUser.role !== 'admin') {
-    //   return NextResponse.json(
-    //     { message: 'Unauthorized - Admin access required' },
-    //     { status: 403 }
-    //   );
-    // }
-    // 
-    // const userToPromote = await User.findOne({ clerkId: userIdToPromote });
-    // 
-    // if (!userToPromote) {
-    //   return NextResponse.json(
-    //     { message: 'User not found' },
-    //     { status: 404 }
-    //   );
-    // }
-    // 
-    // userToPromote.role = role;
-    // await userToPromote.save();
+    // Verify the current user is an admin
+    const adminUser = await User.findOne({ clerkId: userId });
+    
+    if (!adminUser || adminUser.role !== 'admin') {
+      return NextResponse.json(
+        { message: 'Unauthorized - Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    const userToPromote = await User.findOne({ clerkId: userIdToPromote });
+    
+    if (!userToPromote) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
+    
+    userToPromote.role = role;
+    await userToPromote.save();
     
     return NextResponse.json({ 
       message: `User promoted to ${role} successfully`,

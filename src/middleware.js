@@ -26,7 +26,13 @@ export default clerkMiddleware(async (auth, req) => {
   // Sync user data with our database when authenticated
   if (auth.userId && !req.nextUrl.pathname.startsWith('/api/users')) {
     try {
-      // Only sync user data occasionally to avoid too many DB operations
+      // Get the primary email address
+      const primaryEmail = auth.user?.emailAddresses?.find(
+        email => email.id === auth.user.primaryEmailAddressId
+      )?.emailAddress || auth.user?.emailAddresses?.[0]?.emailAddress;
+      
+      // Only sync user data occasionally to avoid too many DB operations,
+      // but always sync if we have a new or different email
       const shouldSync = Math.random() < 0.1; // 10% chance to sync on any request
       
       if (shouldSync) {
@@ -34,7 +40,7 @@ export default clerkMiddleware(async (auth, req) => {
           firstName: auth.user?.firstName,
           lastName: auth.user?.lastName,
           username: auth.user?.username,
-          email: auth.user?.emailAddresses?.[0]?.emailAddress,
+          email: primaryEmail,
           profileImageUrl: auth.user?.imageUrl
         };
         

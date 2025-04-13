@@ -53,6 +53,12 @@ export default function SpecialDashboard() {
     fetcher
   );
   
+  // Fetch approved aid requests assigned to this special user
+  const { data: approvedRequests, error: approvedError, isLoading: approvedLoading, mutate: refreshApproved } = useSWR(
+    '/api/aid-requests?status=approved',
+    fetcher
+  );
+  
   // Fetch reported posts filtered by region if selected
   const { data: reportedPosts, error: reportsError, isLoading: reportsLoading, mutate: refreshReports } = useSWR(
     `/api/reports${selectedRegion ? `?region=${encodeURIComponent(selectedRegion)}` : ''}`,
@@ -82,6 +88,23 @@ export default function SpecialDashboard() {
       refreshAidRequests();
     } catch (error) {
       console.error('Error denying aid request:', error);
+    }
+  };
+  
+  // Handle updating aid request status
+  const handleUpdateAidStatus = async (requestId, status) => {
+    try {
+      await fetch(`/api/aid-requests/${requestId}/update`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+      
+      refreshApproved();
+    } catch (error) {
+      console.error('Error updating aid request status:', error);
     }
   };
   
@@ -147,7 +170,17 @@ export default function SpecialDashboard() {
                           : 'text-zinc-400 hover:text-[#ededed]'
                       }`}
                     >
-                      Aid Requests
+                      Pending Aid
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('approved')}
+                      className={`py-3 px-6 font-medium text-sm ${
+                        activeTab === 'approved'
+                          ? 'border-b-2 border-primary text-primary'
+                          : 'text-zinc-400 hover:text-[#ededed]'
+                      }`}
+                    >
+                      Approved Aid
                     </button>
                     <button
                       onClick={() => setActiveTab('reports')}
@@ -195,8 +228,18 @@ export default function SpecialDashboard() {
                           </thead>
                           <tbody className="bg-zinc-900 divide-y divide-zinc-800">
                             {aidRequests?.map((request) => (
-                              <tr key={request._id} className="hover:bg-zinc-800/50">
+                              <tr 
+                                key={request._id} 
+                                className={`hover:bg-zinc-800/50 ${
+                                  request.requesterRole === 'special' ? 'bg-purple-900/20' : ''
+                                }`}
+                              >
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#ededed]">
+                                  {request.requesterRole === 'special' && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-900 text-purple-200 mr-2">
+                                      Priority
+                                    </span>
+                                  )}
                                   {request.region}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
@@ -222,6 +265,112 @@ export default function SpecialDashboard() {
                                   >
                                     Deny
                                   </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Approved Aid Tab */}
+                {activeTab === 'approved' && (
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-semibold text-[#ededed]">Approved Aid Requests</h2>
+                    </div>
+                    
+                    {approvedLoading ? (
+                      <div className="flex justify-center items-center h-40">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
+                      </div>
+                    ) : approvedError ? (
+                      <Card className="bg-red-900/20 text-red-300 border border-red-800 mb-6">
+                        <p>Error loading approved aid requests. Please try again.</p>
+                      </Card>
+                    ) : approvedRequests?.length === 0 ? (
+                      <Card className="bg-zinc-900 text-[#ededed] mb-6">
+                        <p>No approved aid requests at this time.</p>
+                      </Card>
+                    ) : (
+                      <div className="overflow-x-auto bg-zinc-900 rounded-lg shadow mb-6">
+                        <table className="min-w-full divide-y divide-zinc-800">
+                          <thead className="bg-zinc-800">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Region</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Approved On</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Requesters</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Delivery Status</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-zinc-900 divide-y divide-zinc-800">
+                            {approvedRequests?.map((request) => (
+                              <tr 
+                                key={request._id} 
+                                className={`hover:bg-zinc-800/50 ${
+                                  request.requesterRole === 'special' ? 'bg-purple-900/20' : ''
+                                }`}
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#ededed]">
+                                  {request.requesterRole === 'special' && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-900 text-purple-200 mr-2">
+                                      Priority
+                                    </span>
+                                  )}
+                                  {request.region}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                                  {format(new Date(request.respondedAt || request.updatedAt), 'MMM d, yyyy')}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                                  {request.requesters?.length || 1} people
+                                </td>
+                                <td className="px-6 py-4 text-sm text-zinc-400">
+                                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    request.status === 'approved' 
+                                      ? 'bg-green-900/30 text-green-300'
+                                      : request.status === 'received'
+                                      ? 'bg-blue-900/30 text-blue-300'
+                                      : request.status === 'prepared'
+                                      ? 'bg-yellow-900/30 text-yellow-300'
+                                      : request.status === 'shipped'
+                                      ? 'bg-orange-900/30 text-orange-300'
+                                      : request.status === 'delivered'
+                                      ? 'bg-purple-900/30 text-purple-300'
+                                      : 'bg-zinc-800 text-zinc-300'
+                                  }`}>
+                                    {request.status === 'approved' ? 'Approved' : 
+                                     request.status === 'received' ? 'Materials Received' :
+                                     request.status === 'prepared' ? 'Aid Prepared' :
+                                     request.status === 'shipped' ? 'Shipped' :
+                                     request.status === 'delivered' ? 'Delivered' :
+                                     'Unknown'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex items-center space-x-2">
+                                    <select 
+                                      className="bg-zinc-800 border border-zinc-700 rounded p-1.5 text-sm text-[#ededed]"
+                                      onChange={(e) => handleUpdateAidStatus(request._id, e.target.value)}
+                                      value={request.status}
+                                    >
+                                      <option value="approved">Approved</option>
+                                      <option value="received">Materials Received</option>
+                                      <option value="prepared">Aid Prepared</option>
+                                      <option value="shipped">Shipped</option>
+                                      <option value="delivered">Delivered</option>
+                                    </select>
+                                    
+                                    <Button
+                                      onClick={() => handleUpdateAidStatus(request._id, request.status)}
+                                      className="bg-zinc-700 hover:bg-zinc-600 text-[#ededed] text-xs py-1 px-2"
+                                    >
+                                      Update
+                                    </Button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}

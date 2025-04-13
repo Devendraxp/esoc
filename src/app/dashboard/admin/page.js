@@ -12,8 +12,25 @@ import Button from '../../../components/Button';
 import Card from '../../../components/Card';
 import ThemeToggle from '../../../components/ThemeToggle';
 
-// Fetcher function for SWR
-const fetcher = (url) => fetch(url).then((res) => res.json());
+// Fetcher function for SWR with timeout
+const fetcher = async (url) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error(`Error fetching from ${url}:`, error);
+    throw error;
+  }
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -24,17 +41,41 @@ export default function AdminDashboard() {
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const response = await fetch('/api/auth/me');
-        const data = await response.json();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
+        const response = await fetch('/api/auth/me', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          console.error('Error response from /api/auth/me:', response.status);
+          setUserRole('unknown');
+          return;
+        }
+        
+        const data = await response.json();
         setUserRole(data.role);
         
         // Redirect if not an admin
         if (data.role !== 'admin') {
           router.push('/');
+          return;
+        }
+        
+        // If user is admin, trigger email sync in background
+        try {
+          await fetch('/api/users/sync-emails', {
+            method: 'POST',
+          });
+          console.log('Email sync triggered');
+        } catch (syncError) {
+          console.error('Error syncing emails:', syncError);
+          // Don't block the dashboard if email sync fails
         }
       } catch (error) {
         console.error('Error fetching user role:', error);
+        // Set a default role to avoid getting stuck on loading
+        setUserRole('unknown');
       }
     };
     
@@ -48,7 +89,7 @@ export default function AdminDashboard() {
   );
   
   // Fetch all aid requests
-  const { data: aidRequests, error: aidError, isLoading: aidLoading } = useSWR(
+  const { data: aidRequests, error: aidError, isLoading: aidLoading, mutate: refreshAidRequests } = useSWR(
     '/api/aid-requests/all',
     fetcher
   );
@@ -56,6 +97,12 @@ export default function AdminDashboard() {
   // Fetch all reports
   const { data: reports, error: reportsError, isLoading: reportsLoading } = useSWR(
     '/api/reports/all',
+    fetcher
+  );
+  
+  // Fetch all upgrade requests
+  const { data: upgradeRequests, error: upgradeError, isLoading: upgradeLoading, mutate: refreshUpgradeRequests } = useSWR(
+    '/api/users/upgrade-requests',
     fetcher
   );
   
@@ -145,6 +192,16 @@ export default function AdminDashboard() {
                       User Management
                     </button>
                     <button
+                      onClick={() => setActiveSection('upgrade')}
+                      className={`py-3 px-6 font-medium text-sm ${
+                        activeSection === 'upgrade'
+                          ? 'border-b-2 border-primary text-primary'
+                          : 'text-zinc-400 hover:text-[#ededed]'
+                      }`}
+                    >
+                      Upgrade Requests
+                    </button>
+                    <button
                       onClick={() => setActiveSection('aid')}
                       className={`py-3 px-6 font-medium text-sm ${
                         activeSection === 'aid'
@@ -203,10 +260,17 @@ export default function AdminDashboard() {
                             {users.map((user) => (
                               <tr key={user.id || user.clerkId} className="hover:bg-zinc-800/50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
-                                  {user.id || user.clerkId}
+                                  <div>
+                                    <span className="font-mono">{user.id || user.clerkId}</span>
+                                    {(user.firstName || user.lastName) && (
+                                      <div className="mt-1 text-xs text-primary">
+                                        {[user.firstName, user.lastName].filter(Boolean).join(' ')}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#ededed]">
-                                  {user.name || 'Unnamed'}
+                                  {[user.firstName, user.lastName].filter(Boolean).join(' ') || 'Unnamed'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
                                   {user.email || 'No email'}
@@ -252,6 +316,89 @@ export default function AdminDashboard() {
                                       Delete
                                     </Button>
                                   )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Upgrade Requests Section */}
+                {activeSection === 'upgrade' && (
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-semibold text-[#ededed]">Upgrade Requests</h2>
+                    </div>
+                    
+                    {upgradeLoading ? (
+                      <div className="flex justify-center items-center h-40">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
+                      </div>
+                    ) : upgradeError ? (
+                      <Card className="bg-red-900/20 text-red-300 border border-red-800 mb-6">
+                        <p>Error loading upgrade requests. Please try again.</p>
+                      </Card>
+                    ) : !upgradeRequests || upgradeRequests.length === 0 ? (
+                      <Card className="bg-zinc-900 text-[#ededed] mb-6">
+                        <p>No upgrade requests found.</p>
+                      </Card>
+                    ) : (
+                      <div className="overflow-x-auto bg-zinc-900 rounded-lg shadow mb-6">
+                        <table className="min-w-full divide-y divide-zinc-800">
+                          <thead className="bg-zinc-800">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">User ID</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Region</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Requested Role</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-zinc-900 divide-y divide-zinc-800">
+                            {upgradeRequests.map((request) => (
+                              <tr key={request.userId} className="hover:bg-zinc-800/50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                                  <div>
+                                    <span className="font-mono">{request.userId}</span>
+                                    {(request.firstName || request.lastName) && (
+                                      <div className="mt-1 text-xs text-primary">
+                                        {[request.firstName, request.lastName].filter(Boolean).join(' ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#ededed]">
+                                  {[request.firstName, request.lastName].filter(Boolean).join(' ') || 'Unnamed'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                                  {request.email || 'No email'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                                  {request.region || 'Not specified'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#ededed]">
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-zinc-800 text-zinc-300">
+                                    {request.requestedRole || 'special'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2 flex">
+                                  <Button
+                                    onClick={() => handlePromoteUser(request.userId)}
+                                    className="bg-zinc-700 hover:bg-zinc-600 text-[#ededed] text-xs py-1 px-2"
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    onClick={() => handleDeleteUser(request.userId)}
+                                    className="bg-red-900/30 text-red-300 hover:bg-red-900/50 text-xs py-1 px-2"
+                                  >
+                                    Deny
+                                  </Button>
                                 </td>
                               </tr>
                             ))}

@@ -34,21 +34,38 @@ export async function POST(request, { params }) {
     
     await connectToDatabase();
     
-    // In a real app, you'd update the aid request status in the database
-    // const aidRequest = await AidRequest.findById(id);
-    // 
-    // if (!aidRequest) {
-    //   return NextResponse.json(
-    //     { message: 'Aid request not found' },
-    //     { status: 404 }
-    //   );
-    // }
-    // 
-    // aidRequest.status = 'denied';
-    // aidRequest.respondedBy = userId;
-    // aidRequest.respondedAt = new Date();
-    // 
-    // await aidRequest.save();
+    // Find the current user to check if they're special or admin
+    const user = await mongoose.model('User').findOne({ clerkId: userId });
+    
+    if (!user || (user.role !== 'special' && user.role !== 'admin')) {
+      return NextResponse.json(
+        { message: 'Unauthorized - Special or Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    // Find and update the aid request
+    const aidRequest = await AidRequest.findById(id);
+    
+    if (!aidRequest) {
+      return NextResponse.json(
+        { message: 'Aid request not found' },
+        { status: 404 }
+      );
+    }
+    
+    if (aidRequest.status !== 'pending') {
+      return NextResponse.json(
+        { message: `This aid request is already ${aidRequest.status}` },
+        { status: 400 }
+      );
+    }
+    
+    aidRequest.status = 'denied';
+    aidRequest.respondedBy = user._id; // Use MongoDB _id
+    aidRequest.respondedAt = new Date();
+    
+    await aidRequest.save();
     
     return NextResponse.json({ 
       message: 'Aid request denied successfully',

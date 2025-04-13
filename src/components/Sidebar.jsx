@@ -14,24 +14,24 @@ const Sidebar = ({ userRole = 'normal' }) => {
   const navItems = [
     { name: 'Home', href: '/' },
     { name: 'Create Post', href: '/create-post' },
-    { name: 'Apply for Aid', href: '/aid-request' },
+    { name: 'Apply for Aid', href: '/apply-aid' }, // Fixed path
   ];
   
   // Admin & Special user links - conditionally displayed
-  const dashboardLinks = [
-    { name: 'Dashboard', href: '/dashboard' },
-    ...(userRole === 'admin' ? [
-      { name: 'Manage Users', href: '/dashboard/users' },
-      { name: 'Review Reports', href: '/dashboard/reports' },
-      { name: 'Aid Requests', href: '/dashboard/aid-requests' }
-    ] : []),
-    ...(userRole === 'special' || userRole === 'admin' ? [
-      { name: 'Analytics', href: '/dashboard/analytics' }
-    ] : [])
-  ];
+  const dashboardLinks = [];
+  
+  // Add dashboard link for admin users
+  if (userRole === 'admin') {
+    dashboardLinks.push({ name: 'Admin Dashboard', href: '/dashboard/admin' });
+  }
+  
+  // Add dashboard link for special users
+  if (userRole === 'special') {
+    dashboardLinks.push({ name: 'Special Dashboard', href: '/dashboard/special' });
+  }
 
-  // If user is special or admin, add dashboard links
-  const allLinks = [...navItems, ...(userRole !== 'normal' ? dashboardLinks : [])];
+  // If user is special or admin, add profile link
+  const allLinks = [...navItems, ...dashboardLinks];
 
   // Function to determine if a link is active
   const isActiveLink = (href) => {
@@ -60,6 +60,15 @@ const Sidebar = ({ userRole = 'normal' }) => {
             <div className="text-center">
               <p className="font-semibold text-primary">{user.fullName || user.username || "User"}</p>
               <p className="text-xs text-zinc-400">{user.primaryEmailAddress?.emailAddress}</p>
+              {(userRole === 'admin' || userRole === 'special') && (
+                <span className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  userRole === 'admin'
+                    ? 'bg-purple-900/30 text-purple-300'
+                    : 'bg-zinc-800 text-zinc-300'
+                }`}>
+                  {userRole}
+                </span>
+              )}
             </div>
             
             <div className="flex gap-2 w-full">

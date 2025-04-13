@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import Container from '../components/Container';
 import Sidebar from '../components/Sidebar';
@@ -12,6 +12,26 @@ import PostCard from '../components/PostCard';
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function Home() {
+  // State for user role
+  const [userRole, setUserRole] = useState('normal');
+  
+  // Fetch user role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const userData = await response.json();
+          setUserRole(userData.role);
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      }
+    };
+    
+    fetchUserRole();
+  }, []);
+
   // Fetch posts using SWR
   const { data: posts, error, isLoading, mutate } = useSWR('/api/posts', fetcher);
 
@@ -23,7 +43,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar userRole={userRole} />
 
       {/* Main content */}
       <div className="flex-1 ml-64">

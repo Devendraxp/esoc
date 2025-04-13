@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from '@clerk/nextjs';
 import Container from '../../components/Container';
@@ -14,6 +14,26 @@ export default function CreatePost() {
   const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser();
   const userId = isLoaded && isSignedIn ? user.id : null;
+  
+  // State for user role
+  const [userRole, setUserRole] = useState('normal');
+  
+  // Fetch user role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const userData = await response.json();
+          setUserRole(userData.role);
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      }
+    };
+    
+    fetchUserRole();
+  }, []);
   
   // State for form data
   const [content, setContent] = useState('');
@@ -156,7 +176,7 @@ export default function CreatePost() {
   return (
     <Container noPadding={true} fullWidth={true} className="p-0 overflow-hidden rounded-none border-0">
       <div className="flex">
-        <Sidebar />
+        <Sidebar userRole={userRole} />
         
         <main className="flex-1 pl-64 py-8 pr-4 sm:pr-6 lg:pr-8">
           <SignedIn>

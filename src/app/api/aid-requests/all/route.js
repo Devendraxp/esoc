@@ -32,75 +32,61 @@ export async function GET(request) {
     
     await connectToDatabase();
     
-    // For demo purposes - in production, you'd fetch from the database
-    // const adminUser = await User.findOne({ clerkId: userId });
-    // 
-    // if (!adminUser || adminUser.role !== 'admin') {
-    //   return NextResponse.json(
-    //     { message: 'Unauthorized - Admin access required' },
-    //     { status: 403 }
-    //   );
-    // }
-    // 
-    // const aidRequests = await AidRequest.find()
-    //   .sort({ createdAt: -1 });
+    // Find the user to verify they're an admin or special user
+    const user = await mongoose.model('User').findOne({ clerkId: userId });
     
-    // Sample data for demonstration
-    const sampleAidRequests = [
-      {
-        _id: 'aid_1',
-        region: 'Eastern District',
-        status: 'pending',
-        requesters: [{ clerkId: 'user_3' }, { clerkId: 'user_7' }, { clerkId: 'user_12' }],
-        adminNote: 'Multiple families trapped in building with dwindling supplies',
-        createdAt: new Date('2025-04-10T08:30:00'),
-        updatedAt: new Date('2025-04-10T08:30:00')
-      },
-      {
-        _id: 'aid_2',
-        region: 'Western District',
-        status: 'approved',
-        requesters: [{ clerkId: 'user_4' }, { clerkId: 'user_8' }],
-        adminNote: 'Medical supplies needed urgently',
-        createdAt: new Date('2025-04-09T14:15:00'),
-        updatedAt: new Date('2025-04-09T16:20:00'),
-        respondedBy: 'user_2',
-        respondedAt: new Date('2025-04-09T16:20:00')
-      },
-      {
-        _id: 'aid_3',
-        region: 'Northern Community',
-        status: 'denied',
-        requesters: [{ clerkId: 'user_5' }],
-        adminNote: 'Request for luxury items not critical at this time',
-        createdAt: new Date('2025-04-08T11:45:00'),
-        updatedAt: new Date('2025-04-08T13:10:00'),
-        respondedBy: 'user_5',
-        respondedAt: new Date('2025-04-08T13:10:00')
-      },
-      {
-        _id: 'aid_4',
-        region: 'Region 1',
-        status: 'approved',
-        requesters: [{ clerkId: 'user_6' }, { clerkId: 'user_9' }, { clerkId: 'user_11' }],
-        adminNote: 'Food and water supplies needed for isolated community',
-        createdAt: new Date('2025-04-07T09:20:00'),
-        updatedAt: new Date('2025-04-07T10:45:00'),
-        respondedBy: 'user_2',
-        respondedAt: new Date('2025-04-07T10:45:00')
-      },
-      {
-        _id: 'aid_5',
-        region: 'Region 3',
-        status: 'pending',
-        requesters: [{ clerkId: 'user_10' }],
-        adminNote: 'Shelter required for displaced families',
-        createdAt: new Date('2025-04-12T07:30:00'),
-        updatedAt: new Date('2025-04-12T07:30:00')
-      }
-    ];
+    if (!user) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
     
-    return NextResponse.json(sampleAidRequests);
+    // Only admins can view all requests, special users can only see pending ones
+    if (user.role !== 'admin' && user.role !== 'special') {
+      return NextResponse.json(
+        { message: 'Unauthorized - Admin or special access required' },
+        { status: 403 }
+      );
+    }
+    
+    // Build query based on role and parameters
+    let query = {};
+    
+    // Get status parameter
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const region = url.searchParams.get('region');
+    
+    // Filter by status if provided
+    if (status) {
+      query.status = status;
+    } else if (user.role === 'special') {
+      // Special users can only see pending or their approved requests without filter
+      query.status = 'pending';
+    }
+    
+    // Filter by region if provided (for special users in specific regions)
+    if (region) {
+      query.region = { $regex: region, $options: 'i' };
+    }
+    
+    // Fetch aid requests from the database
+    const aidRequests = await AidRequest.find(query)
+      .populate({
+        path: 'requesters',
+        select: 'clerkId firstName lastName username email profileImageUrl profile_location role'
+      })
+      .populate({
+        path: 'respondedBy',
+        select: 'clerkId firstName lastName username email profileImageUrl profile_location role'
+      })
+      .sort({ 
+        requesterRole: -1, // Special users' requests first
+        createdAt: -1      // Then newest first
+      });
+    
+    return NextResponse.json(aidRequests);
   } catch (error) {
     console.error('Error fetching all aid requests:', error);
     return NextResponse.json(

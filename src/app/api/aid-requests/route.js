@@ -42,27 +42,35 @@ export async function POST(request) {
     
     await connectToDatabase();
     
-    // For demo purposes - in production, you'd create an actual aid request
-    // const aidRequest = new AidRequest({
-    //   region: region.trim(),
-    //   requesters: [userId],
-    //   status: 'pending',
-    //   adminNote: additionalInfo || ''
-    // });
-    // await aidRequest.save();
+    // Find user to get their role
+    const user = await User.findOne({ clerkId: userId });
     
-    // Mock response for demo
-    const mockAidRequest = {
-      _id: new mongoose.Types.ObjectId().toString(),
+    if (!user) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Create the actual aid request
+    const aidRequest = new AidRequest({
       region: region.trim(),
-      requesters: [userId],
+      requesters: [user._id], // Use MongoDB _id, not clerkId
       status: 'pending',
       adminNote: additionalInfo || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+      requesterRole: user.role // Save the user's role with the request for priority handling
+    });
     
-    return NextResponse.json(mockAidRequest, { status: 201 });
+    await aidRequest.save();
+    
+    // Return the created aid request with user details
+    const createdRequest = await AidRequest.findById(aidRequest._id)
+      .populate({
+        path: 'requesters',
+        select: 'clerkId firstName lastName username email profileImageUrl profile_location role'
+      });
+    
+    return NextResponse.json(createdRequest, { status: 201 });
   } catch (error) {
     console.error('Error creating aid request:', error);
     return NextResponse.json(
@@ -85,32 +93,44 @@ export async function GET(request) {
     
     await connectToDatabase();
     
-    // For demo purposes - in production, you'd fetch from the database
-    // const aidRequests = await AidRequest.find({
-    //   requesters: userId
-    // }).sort({ createdAt: -1 });
+    // Get the URL parameters
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
     
-    // Sample data for demonstration
-    const sampleAidRequests = [
-      {
-        _id: '1',
-        region: 'Eastern District, Block 5',
-        requesters: [userId],
-        status: 'pending',
-        adminNote: '',
-        createdAt: new Date('2025-04-11T09:30:00')
-      },
-      {
-        _id: '2',
-        region: 'Northern Community Center',
-        requesters: [userId],
-        status: 'approved',
-        adminNote: 'Aid supplies will be distributed on April 15th between 10 AM and 4 PM',
-        createdAt: new Date('2025-04-09T14:15:00')
-      }
-    ];
+    // Find the user to get their MongoDB _id and role
+    const user = await User.findOne({ clerkId: userId });
     
-    return NextResponse.json(sampleAidRequests);
+    if (!user) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Build the query based on parameters
+    let query = {};
+    
+    // If status parameter is provided, filter by status
+    if (status) {
+      query.status = status;
+    }
+    
+    // For normal users, show only their own aid requests
+    // For special and admin users, show all aid requests if no status filter
+    // but still filter by status if specified
+    if (user.role === 'normal') {
+      query.requesters = user._id;
+    }
+    
+    // Fetch aid requests from the database
+    const aidRequests = await AidRequest.find(query)
+      .populate({
+        path: 'requesters',
+        select: 'clerkId firstName lastName username email profileImageUrl profile_location role'
+      })
+      .sort({ createdAt: -1 });
+    
+    return NextResponse.json(aidRequests);
   } catch (error) {
     console.error('Error fetching aid requests:', error);
     return NextResponse.json(
