@@ -535,7 +535,13 @@ export default function AdminDashboard() {
                                     </span>
                                   </div>
                                   <p className="text-sm text-zinc-400">
-                                    Reported on {format(new Date(report.createdAt), 'MMM d, yyyy')} by {report.reporter?.clerkId || 'Anonymous'}
+                                    Reported on {format(new Date(report.createdAt), 'MMM d, yyyy')} by {
+                                      typeof report.reporter === 'object' 
+                                        ? (report.reporter?.firstName 
+                                           ? `${report.reporter.firstName} ${report.reporter.lastName || ''}`.trim() 
+                                           : report.reporter?.username || report.reporter?.clerkId || 'Anonymous')
+                                        : (report.reporter || 'Anonymous')
+                                    }
                                   </p>
                                   <p className="text-sm text-zinc-400 mt-2">
                                     <span className="font-medium">Reason:</span> {report.reason}
@@ -544,7 +550,13 @@ export default function AdminDashboard() {
                                 
                                 {report.status === 'resolved' && report.resolvedBy && (
                                   <div className="text-sm text-zinc-400">
-                                    <span className="font-medium">Resolved by:</span> {report.resolvedBy}
+                                    <span className="font-medium">Resolved by:</span> {
+                                      typeof report.resolvedBy === 'object'
+                                        ? (report.resolvedBy?.firstName 
+                                           ? `${report.resolvedBy.firstName} ${report.resolvedBy.lastName || ''}`.trim()
+                                           : report.resolvedBy?.username || report.resolvedBy?.clerkId || 'Unknown')
+                                        : report.resolvedBy
+                                    }
                                   </div>
                                 )}
                               </div>
@@ -553,7 +565,17 @@ export default function AdminDashboard() {
                                 <p className="text-[#ededed]">{report.post?.content}</p>
                                 <div className="flex justify-between items-center mt-3">
                                   <p className="text-xs text-zinc-400">
-                                    Posted by {report.post?.author?.clerkId || 'Anonymous'} in {report.post?.author?.profile_location || 'Unknown Region'}
+                                    Posted by {
+                                      typeof report.post?.author === 'object'
+                                        ? (report.post.author?.firstName
+                                           ? `${report.post.author.firstName} ${report.post.author.lastName || ''}`.trim()
+                                           : report.post.author?.username || report.post.author?.clerkId || 'Anonymous')
+                                        : (report.post?.author || 'Anonymous')
+                                    } in {
+                                      typeof report.post?.author === 'object'
+                                        ? report.post.author?.profile_location || 'Unknown Region'
+                                        : 'Unknown Region'
+                                    }
                                   </p>
                                   {report.post?.fakeScore > 0 && (
                                     <div className="bg-zinc-900 text-orange-300 p-1 px-2 rounded text-xs">

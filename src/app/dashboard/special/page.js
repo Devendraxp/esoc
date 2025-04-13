@@ -430,7 +430,13 @@ export default function SpecialDashboard() {
                                 </div>
                                 <div>
                                   <p className="text-sm font-medium text-[#ededed] mb-2">
-                                    Reported by {report.reporter?.clerkId || 'Anonymous'} • {report.reason}
+                                    Reported by {
+                                      typeof report.reporter === 'object' 
+                                        ? (report.reporter?.firstName 
+                                           ? `${report.reporter.firstName} ${report.reporter.lastName || ''}`.trim() 
+                                           : report.reporter?.username || report.reporter?.clerkId || 'Anonymous')
+                                        : (report.reporter || 'Anonymous')
+                                    } • {report.reason}
                                   </p>
                                   <p className="text-sm text-zinc-400 mb-6">
                                     Reported on {format(new Date(report.createdAt), 'MMM d, yyyy')}
@@ -439,7 +445,17 @@ export default function SpecialDashboard() {
                                   <div className="bg-zinc-800 rounded-lg p-6 mb-6">
                                     <p className="text-[#ededed] line-clamp-3">{report.post?.content}</p>
                                     <p className="text-xs text-zinc-400 mt-3">
-                                      Posted by {report.post?.author?.clerkId || 'Anonymous'} in {report.post?.author?.profile_location || 'Unknown Region'}
+                                      Posted by {
+                                        typeof report.post?.author === 'object'
+                                          ? (report.post.author?.firstName
+                                             ? `${report.post.author.firstName} ${report.post.author.lastName || ''}`.trim()
+                                             : report.post.author?.username || report.post.author?.clerkId || 'Anonymous')
+                                          : (report.post?.author || 'Anonymous')
+                                      } in {
+                                        typeof report.post?.author === 'object'
+                                          ? report.post.author?.profile_location || 'Unknown Region'
+                                          : 'Unknown Region'
+                                      }
                                     </p>
                                   </div>
                                   

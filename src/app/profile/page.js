@@ -391,6 +391,13 @@ export default function ProfilePage() {
                 <p className="text-[#ededed] text-sm font-mono">{user.id}</p>
               </div>
               
+              {dbUser && (
+                <div className="mb-6">
+                  <p className="text-sm font-medium mb-1 text-zinc-400">Role</p>
+                  <p className="text-[#ededed]">{dbUser.role || 'Normal User'}</p>
+                </div>
+              )}
+              
               <div className="border-t border-zinc-800 pt-6">
                 <Button 
                   onClick={() => openUserProfile()}
