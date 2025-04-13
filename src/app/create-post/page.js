@@ -18,6 +18,60 @@ export default function CreatePost() {
   // State for user role
   const [userRole, setUserRole] = useState('normal');
   
+  // State for location suggestions
+  const [location, setLocation] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  
+  // Handle location input and fetch suggestions from API
+  const handleLocationChange = (e) => {
+    const inputValue = e.target.value;
+    setLocation(inputValue);
+    
+    if (inputValue.length > 1) {
+      // Debounce the API call to avoid too many requests
+      setIsLoadingSuggestions(true);
+      fetchLocationSuggestions(inputValue);
+    } else {
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+  
+  // Fetch location suggestions from API
+  const fetchLocationSuggestions = async (query) => {
+    if (!query || query.length < 2) return;
+    
+    try {
+      // Using the GeoDB Cities API from RapidAPI
+      // You can replace this with any location API of your choice
+      const response = await fetch(`/api/location-suggestions?query=${encodeURIComponent(query)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLocationSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      } else {
+        console.error('Failed to fetch location suggestions');
+        setLocationSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching location suggestions:', error);
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+  
+  // Select a suggestion
+  const selectSuggestion = (suggestion) => {
+    setLocation(suggestion);
+    setShowSuggestions(false);
+  };
+  
   // Fetch user role
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -113,6 +167,7 @@ export default function CreatePost() {
       // Create FormData to upload files
       const formData = new FormData();
       formData.append('content', content);
+      formData.append('location', location);
       mediaFiles.forEach(file => formData.append('media', file));
       
       const response = await fetch('/api/posts', {
@@ -127,6 +182,7 @@ export default function CreatePost() {
       
       // Clear form after successful submission
       setContent('');
+      setLocation('');
       setMediaFiles([]);
       
       // Revoke all object URLs to avoid memory leaks
@@ -209,6 +265,35 @@ export default function CreatePost() {
                 </div>
                 
                 <div className="mb-6">
+                  <label htmlFor="location" className="block mb-2 text-sm font-medium text-[#ededed]">
+                    Location (Optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="location"
+                      type="text"
+                      className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-[#ededed] focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter a location..."
+                      value={location}
+                      onChange={handleLocationChange}
+                    />
+                    {showSuggestions && (
+                      <ul className="absolute z-10 mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-lg text-[#ededed]">
+                        {locationSuggestions.map((suggestion, index) => (
+                          <li 
+                            key={index} 
+                            className="p-2 hover:bg-zinc-700 cursor-pointer"
+                            onClick={() => selectSuggestion(suggestion)}
+                          >
+                            {suggestion}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mb-6">
                   <label className="block mb-2 text-sm font-medium text-[#ededed]">
                     Add Media (Optional)
                   </label>
@@ -240,9 +325,18 @@ export default function CreatePost() {
                   <Button 
                     type="submit" 
                     disabled={isSubmitting} 
-                    className="px-6 py-2"
+                    className={`px-6 py-2 border rounded-md transition ${
+                      isSubmitting 
+                        ? 'bg-blue-900/30 text-blue-300 border-blue-700' 
+                        : 'bg-green-900/20 text-green-400 border-green-700 hover:bg-green-800/30'
+                    }`}
                   >
-                    {isSubmitting ? 'Posting...' : 'Post'}
+                    {isSubmitting ? (
+                      <div className="flex items-center">
+                        <div className="h-4 w-4 mr-2 rounded-full border-2 border-t-transparent border-blue-300 animate-spin"></div>
+                        Posting...
+                      </div>
+                    ) : 'Post'}
                   </Button>
                 </div>
               </form>

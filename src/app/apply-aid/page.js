@@ -15,11 +15,60 @@ export default function ApplyForAid() {
   
   // State for form data
   const [region, setRegion] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   
+  // Handle location input and fetch suggestions
+  const handleLocationChange = (e) => {
+    const inputValue = e.target.value;
+    setRegion(inputValue);
+    
+    if (inputValue.length > 1) {
+      // Fetch location suggestions
+      setIsLoadingSuggestions(true);
+      fetchLocationSuggestions(inputValue);
+    } else {
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+  
+  // Fetch location suggestions from API
+  const fetchLocationSuggestions = async (query) => {
+    if (!query || query.length < 2) return;
+    
+    try {
+      const response = await fetch(`/api/location-suggestions?query=${encodeURIComponent(query)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLocationSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      } else {
+        console.error('Failed to fetch location suggestions');
+        setLocationSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching location suggestions:', error);
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+  
+  // Select a suggestion
+  const selectSuggestion = (suggestion) => {
+    setRegion(suggestion);
+    setShowSuggestions(false);
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -110,10 +159,26 @@ export default function ApplyForAid() {
                         <Input
                           id="region"
                           value={region}
-                          onChange={(e) => setRegion(e.target.value)}
+                          onChange={handleLocationChange}
                           placeholder="Enter your region or specific location"
                           required
                         />
+                        {showSuggestions && (
+                          <ul className="mt-2 bg-zinc-800 border border-zinc-700 rounded-md text-[#ededed]">
+                            {locationSuggestions.map((suggestion, index) => (
+                              <li 
+                                key={index} 
+                                className="px-3 py-2 cursor-pointer hover:bg-zinc-700"
+                                onClick={() => selectSuggestion(suggestion)}
+                              >
+                                {suggestion}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {isLoadingSuggestions && (
+                          <p className="mt-2 text-xs text-zinc-400">Loading suggestions...</p>
+                        )}
                         <p className="mt-2 text-xs text-zinc-400">
                           Be as specific as possible (e.g., "East District, Building 4")
                         </p>
@@ -144,14 +209,25 @@ export default function ApplyForAid() {
                           variant="secondary"
                           type="button"
                           onClick={() => router.push('/')}
+                          className="px-6 py-2 border border-zinc-700 rounded-md bg-zinc-800/60 hover:bg-zinc-700/60 transition"
                         >
                           Cancel
                         </Button>
                         <Button
                           type="submit"
                           disabled={isSubmitting}
+                          className={`px-6 py-2 border rounded-md transition ${
+                            isSubmitting 
+                              ? 'bg-blue-900/30 text-blue-300 border-blue-700' 
+                              : 'bg-green-900/20 text-green-400 border-green-700 hover:bg-green-800/30'
+                          }`}
                         >
-                          {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                          {isSubmitting ? (
+                            <div className="flex items-center">
+                              <div className="h-4 w-4 mr-2 rounded-full border-2 border-t-transparent border-blue-300 animate-spin"></div>
+                              Submitting...
+                            </div>
+                          ) : 'Submit Request'}
                         </Button>
                       </div>
                     </form>

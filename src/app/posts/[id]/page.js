@@ -13,6 +13,7 @@ import Button from '../../../components/Button';
 import Card from '../../../components/Card';
 import Input from '../../../components/Input';
 import ThemeToggle from '../../../components/ThemeToggle';
+import ImageSlider from '../../../components/ImageSlider';
 
 // Fetcher function for SWR
 const fetcher = (url) => fetch(url).then((res) => res.json());
@@ -28,12 +29,23 @@ export default function PostDetail({ params }) {
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authorDetails, setAuthorDetails] = useState(null);
+  const [inputError, setInputError] = useState(false);
+  
+  // For optimistic UI updates
+  const [optimisticPost, setOptimisticPost] = useState(null);
 
   // SWR for real-time updates
   const { data: post, error: postError, isLoading: postLoading } = useSWR(
     `/api/posts/${id}`,
     fetcher
   );
+  
+  // Update optimistic post when actual post data changes
+  useEffect(() => {
+    if (post) {
+      setOptimisticPost(post);
+    }
+  }, [post]);
   
   const { data: comments, error: commentsError, isLoading: commentsLoading } = useSWR(
     `/api/posts/${id}/comments`,
@@ -67,6 +79,27 @@ export default function PostDetail({ params }) {
     }
     
     try {
+      // Optimistic UI update
+      const userId = user.id;
+      const alreadyLiked = optimisticPost?.likes?.includes(userId);
+      
+      // Create a copy for optimistic update
+      const updatedPost = { ...optimisticPost };
+      
+      if (alreadyLiked) {
+        // Remove like
+        updatedPost.likes = updatedPost.likes.filter(id => id !== userId);
+      } else {
+        // Add like and remove dislike if present
+        updatedPost.likes = [...(updatedPost.likes || []), userId];
+        if (updatedPost.dislikes?.includes(userId)) {
+          updatedPost.dislikes = updatedPost.dislikes.filter(id => id !== userId);
+        }
+      }
+      
+      // Update UI immediately
+      setOptimisticPost(updatedPost);
+
       await fetch(`/api/posts/${id}/like`, {
         method: 'POST',
       });
@@ -75,6 +108,8 @@ export default function PostDetail({ params }) {
       mutate(`/api/posts/${id}`);
     } catch (error) {
       console.error('Error liking post:', error);
+      // Revert the optimistic update on error
+      setOptimisticPost(post);
     }
   };
 
@@ -86,6 +121,27 @@ export default function PostDetail({ params }) {
     }
     
     try {
+      // Optimistic UI update
+      const userId = user.id;
+      const alreadyDisliked = optimisticPost?.dislikes?.includes(userId);
+      
+      // Create a copy for optimistic update
+      const updatedPost = { ...optimisticPost };
+      
+      if (alreadyDisliked) {
+        // Remove dislike
+        updatedPost.dislikes = updatedPost.dislikes.filter(id => id !== userId);
+      } else {
+        // Add dislike and remove like if present
+        updatedPost.dislikes = [...(updatedPost.dislikes || []), userId];
+        if (updatedPost.likes?.includes(userId)) {
+          updatedPost.likes = updatedPost.likes.filter(id => id !== userId);
+        }
+      }
+      
+      // Update UI immediately
+      setOptimisticPost(updatedPost);
+
       await fetch(`/api/posts/${id}/dislike`, {
         method: 'POST',
       });
@@ -94,6 +150,8 @@ export default function PostDetail({ params }) {
       mutate(`/api/posts/${id}`);
     } catch (error) {
       console.error('Error disliking post:', error);
+      // Revert the optimistic update on error
+      setOptimisticPost(post);
     }
   };
 
@@ -133,8 +191,12 @@ export default function PostDetail({ params }) {
       return;
     }
     
-    if (!commentText.trim()) return;
+    if (!commentText.trim()) {
+      setInputError(true);
+      return;
+    }
     
+    setInputError(false);
     setIsSubmitting(true);
     
     try {
@@ -160,58 +222,61 @@ export default function PostDetail({ params }) {
   const renderMedia = (media) => {
     if (!media || media.length === 0) return null;
     
+    // Filter media by type
+    const images = media.filter(item => item.type === 'image');
+    const videos = media.filter(item => item.type === 'video');
+    const audios = media.filter(item => item.type === 'audio');
+    const others = media.filter(item => item.type !== 'image' && item.type !== 'video' && item.type !== 'audio');
+    
     return (
       <div className="mt-4 space-y-4">
-        {media.map((item, idx) => {
-          if (item.type === 'image') {
-            return (
-              <div key={idx} className="relative w-full h-64 rounded-lg overflow-hidden">
-                <Image 
-                  src={item.url} 
-                  alt="Post media" 
-                  fill 
-                  className="object-cover"
-                />
-              </div>
-            );
-          } else if (item.type === 'video') {
-            return (
-              <div key={idx} className="rounded-lg overflow-hidden">
-                <video 
-                  src={item.url} 
-                  controls 
-                  className="w-full"
-                />
-              </div>
-            );
-          } else if (item.type === 'audio') {
-            return (
-              <div key={idx} className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                <audio 
-                  src={item.url} 
-                  controls 
-                  className="w-full"
-                />
-              </div>
-            );
-          } else {
-            return (
-              <div key={idx} className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                <a 
-                  href={item.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  {item.url.split('/').pop() || 'Download attachment'}
-                </a>
-              </div>
-            );
-          }
-        })}
+        {/* Image slider - only show if there are images */}
+        {images.length > 0 && (
+          <ImageSlider 
+            images={images.map(image => image.url)} 
+            height="h-64" 
+            objectFit="object-contain"
+          />
+        )}
+        
+        {/* Videos */}
+        {videos.map((video, index) => (
+          <div key={`video-${index}`} className="rounded-lg overflow-hidden">
+            <video 
+              src={video.url} 
+              controls 
+              className="w-full"
+            />
+          </div>
+        ))}
+        
+        {/* Audio */}
+        {audios.map((audio, index) => (
+          <div key={`audio-${index}`} className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+            <audio 
+              src={audio.url} 
+              controls 
+              className="w-full"
+            />
+          </div>
+        ))}
+        
+        {/* Other files */}
+        {others.map((file, index) => (
+          <div key={`file-${index}`} className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+            <a 
+              href={file.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:underline flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {file.url.split('/').pop() || 'Download attachment'}
+            </a>
+          </div>
+        ))}
       </div>
     );
   };
@@ -314,7 +379,23 @@ export default function PostDetail({ params }) {
                         </p>
                         <div className="flex items-center text-xs text-zinc-400 space-x-2">
                           <span>{post.createdAt ? format(new Date(post.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}</span>
-                          {(authorDetails?.profile_location || post.author?.profile_location) && (
+                          
+                          {/* Post location */}
+                          {post.location && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                {post.location}
+                              </span>
+                            </>
+                          )}
+                          
+                          {/* Author location (only show if post location is empty) */}
+                          {!post.location && (authorDetails?.profile_location || post.author?.profile_location) && (
                             <>
                               <span>•</span>
                               <span className="flex items-center">
@@ -332,33 +413,37 @@ export default function PostDetail({ params }) {
                       <div className="flex space-x-4">
                         <button 
                           onClick={handleLike}
-                          className={`flex items-center hover:text-green-400 transition ${
-                            post.likes?.includes(user?.id) ? 'text-green-400' : 'text-zinc-400'
+                          className={`flex items-center transition border rounded-md px-3 py-1.5 ${
+                            optimisticPost?.likes?.includes(user?.id) 
+                              ? 'text-green-400 bg-green-900/20 border-green-700' 
+                              : 'text-zinc-400 border-zinc-700 hover:border-green-700 hover:bg-green-900/10'
                           }`}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 mr-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2">
                             <path d="M7.493 18.75c-.425 0-.82-.236-.975-.632A7.48 7.48 0 016 15.375c0-1.75.599-3.358 1.602-4.634.151-.192.373-.309.6-.397.473-.183.89-.514 1.212-.924a9.042 9.042 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266-.558.107-1.282.725-1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H14.23c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23h-.777zM2.331 10.977a11.969 11.969 0 00-.831 4.398 12 12 0 00.52 3.507c.26.85 1.084 1.368 1.973 1.368H4.9c.445 0 .72-.498.523-.898a8.963 8.963 0 01-.924-3.977c0-1.708.476-3.305 1.302-4.666.245-.403-.028-.959-.5-.959H4.25c-.832 0-1.612.453-1.918 1.227z" />
                           </svg>
-                          <span>{post.likes?.length || 0}</span>
+                          <span>{optimisticPost?.likes?.length || 0}</span>
                         </button>
                         
                         <button 
                           onClick={handleDislike}
-                          className={`flex items-center hover:text-red-400 transition ${
-                            post.dislikes?.includes(user?.id) ? 'text-red-400' : 'text-zinc-400'
+                          className={`flex items-center transition border rounded-md px-3 py-1.5 ${
+                            optimisticPost?.dislikes?.includes(user?.id) 
+                              ? 'text-red-400 bg-red-900/20 border-red-700' 
+                              : 'text-zinc-400 border-zinc-700 hover:border-red-700 hover:bg-red-900/10'
                           }`}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 mr-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2">
                             <path d="M15.73 5.25h1.035A7.465 7.465 0 0118 9.375a7.465 7.465 0 01-1.235 4.125h-.148c-.806 0-1.534.446-2.031 1.08a9.04 9.04 0 01-2.861 2.4c-.723.384-1.35-.956-1.653 1.715a4.498 4.498 0 00-.322 1.672V21a.75.75 0 01-.75.75 2.25 2.25 0 01-2.25-2.25c0-1.152.26-2.243.723-3.218.266-.558-.107-1.282-.725-1.282H3.622c-1.026 0-1.945-.694-2.054-1.715A12.134 12.134 0 011.5 12c0-2.848.992-5.464 2.649-7.521.388-.482.987-.729 1.605-.729H9.77a4.5 4.5 0 011.423.23l3.114 1.04a4.5 4.5 0 001.423.23zM21.669 13.773c.536-1.362.831-2.845.831-4.398 0-1.22-.182-2.398-.52-3.507-.26-.85-1.084-1.368-1.973-1.368H19.1c-.445 0-.72.498-.523.898.591 1.2.924 2.55.924 3.977a8.959 8.959 0 01-1.302 4.666c-.245.403.028.959.5.959h1.053c.832 0 1.612-.453 1.918-1.227z" />
                           </svg>
-                          <span>{post.dislikes?.length || 0}</span>
+                          <span>{optimisticPost?.dislikes?.length || 0}</span>
                         </button>
                         
                         <button 
                           onClick={handleReport}
-                          className="flex items-center text-zinc-400 hover:text-yellow-400 transition"
+                          className="flex items-center transition border border-zinc-700 hover:border-yellow-600 hover:bg-yellow-900/10 text-zinc-400 hover:text-yellow-400 rounded-md px-3 py-1.5"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 mr-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2">
                             <path fillRule="evenodd" d="M3 2.25a.75.75 0 01.75.75v.54l1.838-.46a9.75 9.75 0 016.725.738l.108.054a8.25 8.25 0 005.58.652l3.109-.732a.75.75 0 01.917.81 47.784 47.784 0 00.005 10.337.75.75 0 01-.574.812l-3.114.733a9.75 9.75 0 01-6.594-.77l-.108-.054a8.25 8.25 0 00-5.69-.625l-2.202.55V21a.75.75 0 01-1.5 0V3A.75.75 0 013 2.25z" clipRule="evenodd" />
                           </svg>
                           <span>Report</span>
@@ -390,19 +475,34 @@ export default function PostDetail({ params }) {
                 <div className="flex space-x-3">
                   <Input
                     value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
+                    onChange={(e) => {
+                      setCommentText(e.target.value);
+                      if (e.target.value.trim() !== '') {
+                        setInputError(false);
+                      }
+                    }}
                     placeholder="Add a comment..."
-                    className="flex-1"
+                    className={`flex-1 ${inputError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : ''}`}
                   />
                   <Button 
                     type="submit" 
                     disabled={isSubmitting || !isSignedIn}
+                    className={`border border-zinc-700 rounded-md px-4 py-2 ${
+                      isSubmitting ? 'bg-blue-900/30 text-blue-300' : 'bg-primary hover:bg-primary/80'
+                    }`}
                   >
-                    {isSubmitting ? 'Sending...' : 'Reply'}
+                    {isSubmitting ? (
+                      <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
+                    ) : (
+                      'Reply'
+                    )}
                   </Button>
                 </div>
                 {!isSignedIn && (
                   <p className="mt-2 text-xs text-zinc-500">Please sign in to leave a comment</p>
+                )}
+                {inputError && (
+                  <p className="mt-2 text-xs text-red-500">Comment cannot be empty</p>
                 )}
               </form>
 
@@ -431,39 +531,59 @@ export default function PostDetail({ params }) {
                   const commentAuthor = comment.authorDetails || { clerkId: comment.author?.clerkId };
                   
                   return (
-                    <Card key={comment._id} className="border border-zinc-800">
+                    <Card key={comment._id} className="border border-zinc-800 hover:border-zinc-700 transition-colors">
                       <div className="flex items-start space-x-3 mb-3">
                         {/* Comment Author Profile Image */}
-                        <div className="relative flex-shrink-0 h-8 w-8 rounded-full overflow-hidden border border-zinc-700">
+                        <div className="relative flex-shrink-0 h-10 w-10 rounded-full overflow-hidden border border-zinc-700">
                           {commentAuthor.profileImageUrl ? (
                             <Image 
                               src={commentAuthor.profileImageUrl} 
-                              alt={commentAuthor.firstName || commentAuthor.clerkId || 'User'}
+                              alt={commentAuthor.firstName || commentAuthor.username || 'User'}
                               fill
                               className="object-cover"
                             />
                           ) : (
                             <div className="h-full w-full bg-zinc-800 flex items-center justify-center text-zinc-500">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                               </svg>
                             </div>
                           )}
                         </div>
                         
-                        <div>
-                          <p className="text-sm font-medium text-[#ededed]">
-                            {commentAuthor.firstName && commentAuthor.lastName 
-                              ? `${commentAuthor.firstName} ${commentAuthor.lastName}`
-                              : commentAuthor.username || commentAuthor.clerkId || 'Anonymous'}
-                          </p>
-                          <p className="text-xs text-zinc-400">
-                            {comment.createdAt ? format(new Date(comment.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}
-                            {commentAuthor.profile_location && ` • ${commentAuthor.profile_location}`}
+                        <div className="flex-1">
+                          <div className="flex justify-between">
+                            <p className="text-sm font-medium text-[#ededed]">
+                              {commentAuthor.firstName && commentAuthor.lastName 
+                                ? `${commentAuthor.firstName} ${commentAuthor.lastName}`
+                                : commentAuthor.username || 'Anonymous'}
+                            </p>
+                            {commentAuthor.role && commentAuthor.role !== 'normal' && (
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                commentAuthor.role === 'admin'
+                                  ? 'bg-purple-900/30 text-purple-300 border border-purple-700'
+                                  : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                              }`}>
+                                {commentAuthor.role}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-400 flex items-center">
+                            <span>{comment.createdAt ? format(new Date(comment.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}</span>
+                            {commentAuthor.profile_location && (
+                              <span className="flex items-center ml-2">
+                                •
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mx-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                {commentAuthor.profile_location}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
-                      <p className="text-[#ededed]">{comment.content}</p>
+                      <p className="text-[#ededed] ml-13 pl-0.5">{comment.content}</p>
                     </Card>
                   );
                 })}

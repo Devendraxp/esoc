@@ -76,6 +76,7 @@ export async function POST(request) {
     // For multipart form data
     const formData = await request.formData();
     const content = formData.get('content');
+    const location = formData.get('location') || '';
     
     if (!content || content.trim() === '') {
       return NextResponse.json(
@@ -111,6 +112,7 @@ export async function POST(request) {
     const post = new Post({
       author: user._id, // Use the MongoDB user _id 
       content: content.trim(),
+      location: location.trim(),
       media,
       likes: [],
       reports: [],

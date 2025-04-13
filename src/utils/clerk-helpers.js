@@ -1,28 +1,37 @@
-export async function syncUserWithClerk(user, clerkUser) {
-  // Extract primary email address from Clerk user object
+export async function syncUserWithClerk(clerkUser, existingUser = null) {
+  // Extract primary email address from Clerk user
   let primaryEmail = null;
   
-  // Try to get email from user object first (from Clerk's current session)
-  if (user.emailAddresses && user.emailAddresses.length > 0) {
-    const primaryEmailObj = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId) 
-                         || user.emailAddresses[0];
+  if (clerkUser.emailAddresses && clerkUser.emailAddresses.length > 0) {
+    const primaryEmailObj = clerkUser.emailAddresses.find(
+      email => email.id === clerkUser.primaryEmailAddressId
+    ) || clerkUser.emailAddresses[0];
+    
     primaryEmail = primaryEmailObj.emailAddress;
   }
   
-  // If not found, try from the clerkUser (from database)
-  if (!primaryEmail && clerkUser?.email) {
-    primaryEmail = clerkUser.email;
-  }
-  
-  // Extract user information from Clerk user object
-  return {
-    clerkId: user.id,
-    firstName: user.firstName || clerkUser?.firstName,
-    lastName: user.lastName || clerkUser?.lastName,
-    username: user.username || clerkUser?.username,
+  // Create a base user object from Clerk data
+  const userData = {
+    clerkId: clerkUser.id,
+    firstName: clerkUser.firstName || '',
+    lastName: clerkUser.lastName || '',
+    username: clerkUser.username || '',
     email: primaryEmail,
-    profileImageUrl: user.imageUrl || clerkUser?.profileImageUrl,
-    profile_location: clerkUser?.profile_location || '',
+    profileImageUrl: clerkUser.imageUrl || '',
+    // Preserve existing user data if available
+    profile_location: existingUser?.profile_location || '',
+    bio: existingUser?.bio || '',
+    role: existingUser?.role || 'normal',
     lastActiveAt: new Date()
   };
+  
+  // Keep any additional fields from the existing user
+  if (existingUser) {
+    return {
+      ...existingUser.toObject ? existingUser.toObject() : existingUser,
+      ...userData,
+    };
+  }
+  
+  return userData;
 }

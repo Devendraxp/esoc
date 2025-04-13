@@ -16,6 +16,10 @@ const PostSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  location: {
+    type: String,
+    default: ''
+  },
   media: [{
     type: { type: String },
     url: { type: String },
