@@ -26,12 +26,16 @@ export default clerkMiddleware(async (auth, req) => {
   // Sync user data with our database when authenticated
   if (auth.userId && !req.nextUrl.pathname.startsWith('/api/users')) {
     try {
-      // Always sync user data to ensure profile information is up-to-date
+      // Get complete user data from auth
       const userData = {
         firstName: auth.user?.firstName || '',
         lastName: auth.user?.lastName || '',
         username: auth.user?.username || '',
-        profileImageUrl: auth.user?.imageUrl || ''
+        profileImageUrl: auth.user?.imageUrl || '',
+        // Make sure to include email data
+        email: auth.user?.emailAddresses?.find(
+          email => email.id === auth.user.primaryEmailAddressId
+        )?.emailAddress || auth.user?.emailAddresses?.[0]?.emailAddress || ''
       };
       
       // Call our API to sync user data

@@ -74,8 +74,34 @@ export async function POST(request) {
     // Get user data from request body
     const formData = await request.json();
     
-    // Fetch the user data directly from Clerk to get the most up-to-date info
-    const clerkUser = await clerkClient.users.getUser(userId);
+    // Log the received form data for debugging
+    console.log('Received profile update request with data:', formData);
+    
+    // Frontend validation should handle this, but validate required fields on server too
+    if (!formData.firstName || !formData.lastName || !formData.username) {
+      return NextResponse.json(
+        { message: 'First name, last name, and username are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Try-catch specifically for Clerk API call
+    let clerkUser;
+    try {
+      // Fetch the user data directly from Clerk to get the most up-to-date info
+      clerkUser = await clerkClient.users.getUser(userId);
+    } catch (clerkError) {
+      console.error('Clerk API error:', clerkError);
+      // Continue with limited data if Clerk API fails
+      clerkUser = { 
+        id: userId, 
+        emailAddresses: [],
+        firstName: formData.firstName || '',
+        lastName: formData.lastName || '',
+        username: formData.username || '',
+        imageUrl: formData.profileImageUrl || ''
+      };
+    }
     
     // Look for existing user
     let user = await User.findOne({ clerkId: userId });
@@ -89,7 +115,7 @@ export async function POST(request) {
       ...syncedUserData,
       ...formData,
       // Always keep the email from Clerk
-      email: syncedUserData.email
+      email: syncedUserData.email || formData.email
     };
     
     if (user) {
@@ -104,13 +130,17 @@ export async function POST(request) {
         },
         { new: true }
       );
+      
+      console.log('Updated existing user:', user._id);
     } else {
-      // Create new user
+      // Create new user with complete profile information
       user = await User.create({
         ...mergedData,
         joinedAt: new Date(),
         lastActiveAt: new Date()
       });
+      
+      console.log('Created new user:', user._id);
     }
     
     return NextResponse.json(user);

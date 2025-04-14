@@ -21,7 +21,9 @@ async function connectToDatabase() {
 
 export async function GET(request, { params }) {
   try {
-    const userId = params.id;
+    // Make sure params is properly awaited in Next.js 13+
+    const { id } = params;
+    const userId = id;
     
     await connectToDatabase();
     

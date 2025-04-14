@@ -30,7 +30,8 @@ const UserSchema = new mongoose.Schema({
   clerkId: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    // Don't set index:true here since we use UserSchema.index() below
   },
   username: {
     type: String

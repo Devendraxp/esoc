@@ -73,6 +73,14 @@ export default function ProfilePage() {
         bio: ''
       });
       
+      // Log user data for debugging
+      console.log('Clerk user data:', {
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        imageUrl: user.imageUrl
+      });
+      
       // Fetch additional user data from our database
       fetchUserData();
       
@@ -257,8 +265,21 @@ export default function ProfilePage() {
     setIsSaving(true);
     setMessage({ type: '', text: '' });
     
+    // Log the form data being submitted for debugging
+    console.log('Submitting form data:', formData);
+    
+    // Validate required fields before submission
+    if (!formData.firstName || !formData.lastName || !formData.username) {
+      setMessage({ 
+        type: 'error', 
+        text: 'Please fill in all required fields: First Name, Last Name, and Username.' 
+      });
+      setIsSaving(false);
+      return;
+    }
+    
     try {
-      // Update user data in our database
+      // Update user data in our database with all form data
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -277,25 +298,29 @@ export default function ProfilePage() {
         });
         fetchUserData();
       } else {
+        // Try to get more error details
+        const errorData = await response.json().catch(() => ({}));
         setMessage({ 
           type: 'error', 
-          text: 'Failed to update profile. Please try again.' 
+          text: errorData.message || 'Failed to update profile. Please try again.' 
         });
       }
       
-      // Update Clerk user data (name and username)
-      try {
-        await user.update({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          username: formData.username
-        });
-      } catch (clerkError) {
-        console.error('Error updating Clerk user:', clerkError);
-        setMessage({ 
-          type: 'warning', 
-          text: 'Profile partially updated. Some changes could not be saved.' 
-        });
+      // Update Clerk user data only if we have values
+      if (formData.firstName || formData.lastName || formData.username) {
+        try {
+          await user.update({
+            firstName: formData.firstName || user.firstName,
+            lastName: formData.lastName || user.lastName,
+            username: formData.username || user.username
+          });
+        } catch (clerkError) {
+          console.error('Error updating Clerk user:', clerkError);
+          setMessage({ 
+            type: 'warning', 
+            text: 'Profile partially updated. Some changes could not be saved to Clerk.' 
+          });
+        }
       }
     } catch (error) {
       console.error('Error saving profile:', error);

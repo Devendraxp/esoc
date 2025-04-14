@@ -21,8 +21,26 @@ async function connectToDatabase() {
 
 export async function GET(request, { params }) {
   try {
-    const id = params.id;
+    // Make sure params is properly awaited in Next.js 13+
+    const { id } = params;
+    
+    // Special case handling for non-ObjectId paths like "comments"
+    if (id === 'comments') {
+      return NextResponse.json(
+        { message: 'Invalid post ID. Did you mean to use the comments endpoint?' },
+        { status: 400 }
+      );
+    }
+    
     await connectToDatabase();
+    
+    // Validate that ID is a valid MongoDB ObjectId before querying
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: 'Invalid post ID format' },
+        { status: 400 }
+      );
+    }
     
     // Fetch the post from the database with complete author info
     const post = await Post.findById(id).populate({

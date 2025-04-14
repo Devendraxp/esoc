@@ -10,7 +10,7 @@ export async function syncUserWithClerk(clerkUser, existingUser = null) {
     primaryEmail = primaryEmailObj.emailAddress;
   }
   
-  // Create a base user object from Clerk data
+  // Create a complete user object from Clerk data
   const userData = {
     clerkId: clerkUser.id,
     firstName: clerkUser.firstName || '',
@@ -27,8 +27,11 @@ export async function syncUserWithClerk(clerkUser, existingUser = null) {
   
   // Keep any additional fields from the existing user
   if (existingUser) {
+    // If existingUser is a Mongoose document, convert to plain object
+    const existingUserData = existingUser.toObject ? existingUser.toObject() : existingUser;
+    
     return {
-      ...existingUser.toObject ? existingUser.toObject() : existingUser,
+      ...existingUserData,
       ...userData,
     };
   }
