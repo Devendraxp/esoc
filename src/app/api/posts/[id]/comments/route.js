@@ -23,19 +23,20 @@ async function connectToDatabase() {
 
 export async function GET(request, { params }) {
   try {
-    const postId = params.id;
+    // Correctly destructure the params object
+    const { id } = params;
     await connectToDatabase();
     
-    // Fetch comments for the post from the database with authorDetails
-    const comments = await Comment.find({ post: postId })
+    // Fetch comments for the post from the database with full author information
+    const comments = await Comment.find({ post: id })
       .populate({
-        path: 'authorDetails',
-        select: 'clerkId profile_location role'
+        path: 'author',
+        model: User,
+        select: 'clerkId firstName lastName username email profileImageUrl profile_location bio role'
       })
       .sort({ createdAt: 1 });
     
     return NextResponse.json(comments);
-    
   } catch (error) {
     console.error('Error fetching comments:', error);
     return NextResponse.json(
@@ -48,7 +49,8 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   try {
     const { userId } = getAuth(request);
-    const postId = params.id;
+    // Correctly destructure the params object
+    const { id: postId } = params;
     
     if (!userId) {
       return NextResponse.json(
@@ -62,10 +64,46 @@ export async function POST(request, { params }) {
     // Check if user exists in our database, if not create a user
     let user = await User.findOne({ clerkId: userId });
     if (!user) {
+      // Fetch user details from Clerk to properly sync all user data
+      const res = await fetch(`https://api.clerk.dev/v1/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to fetch user data from Clerk');
+      }
+      
+      const clerkUser = await res.json();
+      
+      // Extract primary email
+      let primaryEmail = null;
+      if (clerkUser.email_addresses && clerkUser.email_addresses.length > 0) {
+        const primaryEmailObj = clerkUser.email_addresses.find(
+          email => email.id === clerkUser.primary_email_address_id
+        ) || clerkUser.email_addresses[0];
+        
+        primaryEmail = primaryEmailObj.email_address;
+      }
+      
+      // Create a new user with complete information
       user = new User({
         clerkId: userId,
-        role: 'normal'
+        firstName: clerkUser.first_name || '',
+        lastName: clerkUser.last_name || '',
+        username: clerkUser.username || '',
+        email: primaryEmail,
+        profileImageUrl: clerkUser.image_url || '',
+        role: 'normal',
+        joinedAt: new Date(),
+        lastActiveAt: new Date()
       });
+      await user.save();
+    } else {
+      // Update lastActiveAt for existing user
+      user.lastActiveAt = new Date();
       await user.save();
     }
     
@@ -87,10 +125,10 @@ export async function POST(request, { params }) {
       );
     }
     
-    // Create and save the comment
+    // Create and save the comment with MongoDB user ID
     const comment = new Comment({
       post: postId,
-      author: userId, // Now using Clerk userId directly
+      author: user._id, // Now using MongoDB user ID instead of Clerk ID
       content: content.trim()
     });
     
@@ -98,8 +136,9 @@ export async function POST(request, { params }) {
     
     // Return the comment with author information
     const populatedComment = await Comment.findById(comment._id).populate({
-      path: 'authorDetails',
-      select: 'clerkId profile_location role'
+      path: 'author',
+      model: User,
+      select: 'clerkId firstName lastName username profileImageUrl profile_location bio role'
     });
     
     return NextResponse.json(populatedComment, { status: 201 });

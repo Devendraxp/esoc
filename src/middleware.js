@@ -1,6 +1,33 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
+// Only import the news processor initializer in a controlled way
+let initializeNewsProcessor;
+if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
+  try {
+    const newsSchedulerModule = require('./utils/newsScheduler');
+    initializeNewsProcessor = newsSchedulerModule.initializeNewsProcessor;
+    
+    // Initialize news processor only in Node.js environment (not Edge runtime)
+    if (process.env.HUGGINGFACE_API_KEY && process.env.GEMINI_API_KEY) {
+      console.log('Attempting to initialize news processor...');
+      // Delay initialization to ensure models are registered
+      setTimeout(() => {
+        try {
+          initializeNewsProcessor();
+          console.log('News processor initialized');
+        } catch (error) {
+          console.error('Failed to initialize news processor:', error);
+        }
+      }, 3000);
+    } else {
+      console.warn('News processor not initialized - missing API keys');
+    }
+  } catch (error) {
+    console.error('Error importing news scheduler:', error);
+  }
+}
+
 // Configure which routes require authentication
 const isAuthRoute = createRouteMatcher([
   // Protected API routes
@@ -11,10 +38,12 @@ const isAuthRoute = createRouteMatcher([
   '/api/reports',
   '/api/reports/(.*)',
   '/api/users/(.*)',
+  '/api/news-tracker/(.*)',
   // Protected app routes
   '/create-post(.*)',
   '/apply-aid(.*)',
-  '/dashboard/(.*)'
+  '/dashboard/(.*)',
+  '/news-tracker(.*)'
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

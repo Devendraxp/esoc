@@ -11,7 +11,7 @@ const AidRequestSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['pending', 'approved', 'denied', 'received', 'prepared', 'shipped', 'delivered'],
+    enum: ['pending', 'approved', 'denied', 'received', 'prepared', 'shipped', 'delivered', 'completed'],
     default: 'pending'
   },
   adminNote: {
@@ -28,7 +28,15 @@ const AidRequestSchema = new mongoose.Schema({
   },
   respondedAt: {
     type: Date
-  }
+  },
+  acceptedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deniedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, { timestamps: true });
 
 const AidRequest = mongoose.models.AidRequest || mongoose.model('AidRequest', AidRequestSchema);

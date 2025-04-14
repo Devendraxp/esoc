@@ -1,11 +1,5 @@
 import mongoose from 'mongoose';
 
-// Clear model if it exists to ensure clean rebuild
-// This helps prevent issues with hot reloading in development
-if (mongoose.models.Post) {
-  delete mongoose.models.Post;
-}
-
 const PostSchema = new mongoose.Schema({
   author: {
     type: mongoose.Schema.Types.ObjectId,
@@ -45,6 +39,23 @@ const PostSchema = new mongoose.Schema({
 PostSchema.set('toJSON', { virtuals: true });
 PostSchema.set('toObject', { virtuals: true });
 
-const Post = mongoose.models.Post || mongoose.model('Post', PostSchema);
+// Safe model registration that checks for Edge runtime
+let Post;
+try {
+  // Only check/delete the model in non-edge environments
+  if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge' && mongoose.models.Post) {
+    delete mongoose.models.Post;
+  }
+  
+  // Register model
+  Post = mongoose.models.Post || mongoose.model('Post', PostSchema);
+} catch (error) {
+  console.error('Error registering Post model:', error);
+  // Provide a minimal model stub for Edge runtime
+  Post = { 
+    findById: () => Promise.resolve(null),
+    find: () => Promise.resolve([])
+  };
+}
 
 export default Post;

@@ -61,9 +61,24 @@ export async function POST(request, { params }) {
       );
     }
     
-    aidRequest.status = 'denied';
-    aidRequest.respondedBy = user._id; // Use MongoDB _id
-    aidRequest.respondedAt = new Date();
+    // Important: Don't change the status to 'denied' for everyone
+    // Just add the current user to the deniedBy array
+    
+    // Add the current user to the deniedBy array
+    aidRequest.deniedBy = aidRequest.deniedBy || [];
+    
+    // Check if this user already denied this request
+    if (!aidRequest.deniedBy.some(id => id.toString() === user._id.toString())) {
+      aidRequest.deniedBy.push(user._id);
+    }
+    
+    // Only set the respondedBy and respondedAt if an admin user is denying
+    // For special users, we're just adding them to deniedBy array
+    if (user.role === 'admin') {
+      aidRequest.status = 'denied';
+      aidRequest.respondedBy = user._id;
+      aidRequest.respondedAt = new Date();
+    }
     
     await aidRequest.save();
     

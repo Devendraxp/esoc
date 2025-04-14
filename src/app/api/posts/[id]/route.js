@@ -21,7 +21,7 @@ async function connectToDatabase() {
 
 export async function GET(request, { params }) {
   try {
-    // Make sure params is properly awaited in Next.js 13+
+    // Correctly destructure the params object for Next.js
     const { id } = params;
     
     // Special case handling for non-ObjectId paths like "comments"

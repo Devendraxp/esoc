@@ -29,6 +29,12 @@ export async function GET(request) {
   try {
     await connectToDatabase();
     
+    // Get URL parameters for pagination
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
+    const skip = (page - 1) * limit;
+    
     // Fetch posts from the database with complete author information
     const posts = await Post.find()
       .populate({
@@ -37,9 +43,22 @@ export async function GET(request) {
         select: 'clerkId firstName lastName username email profileImageUrl profile_location bio role'
       })
       .sort({ createdAt: -1 })
-      .limit(10);
+      .skip(skip)
+      .limit(limit);
     
-    return NextResponse.json(posts);
+    // Get total count for pagination metadata
+    const total = await Post.countDocuments();
+    
+    return NextResponse.json({
+      posts,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+        hasMore: skip + posts.length < total
+      }
+    });
     
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -63,13 +82,49 @@ export async function POST(request) {
     
     await connectToDatabase();
     
-    // Check if user exists in our database, if not create a user
+    // Check if user exists in our database, if not create a user with full Clerk data
     let user = await User.findOne({ clerkId: userId });
     if (!user) {
+      // Fetch user details from Clerk to properly sync all user data
+      const res = await fetch(`https://api.clerk.dev/v1/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to fetch user data from Clerk');
+      }
+      
+      const clerkUser = await res.json();
+      
+      // Extract primary email
+      let primaryEmail = null;
+      if (clerkUser.email_addresses && clerkUser.email_addresses.length > 0) {
+        const primaryEmailObj = clerkUser.email_addresses.find(
+          email => email.id === clerkUser.primary_email_address_id
+        ) || clerkUser.email_addresses[0];
+        
+        primaryEmail = primaryEmailObj.email_address;
+      }
+      
+      // Create a new user with complete information
       user = new User({
         clerkId: userId,
-        role: 'normal'
+        firstName: clerkUser.first_name || '',
+        lastName: clerkUser.last_name || '',
+        username: clerkUser.username || '',
+        email: primaryEmail,
+        profileImageUrl: clerkUser.image_url || '',
+        role: 'normal',
+        joinedAt: new Date(),
+        lastActiveAt: new Date()
       });
+      await user.save();
+    } else {
+      // Update lastActiveAt for existing user
+      user.lastActiveAt = new Date();
       await user.save();
     }
     

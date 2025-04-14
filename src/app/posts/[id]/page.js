@@ -30,6 +30,7 @@ export default function PostDetail({ params }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authorDetails, setAuthorDetails] = useState(null);
   const [inputError, setInputError] = useState(false);
+  const [userRole, setUserRole] = useState(null); // Add userRole state
   
   // For optimistic UI updates
   const [optimisticPost, setOptimisticPost] = useState(null);
@@ -40,12 +41,35 @@ export default function PostDetail({ params }) {
     fetcher
   );
   
+  // Fetch current user's role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (isSignedIn) {
+        try {
+          const response = await fetch('/api/auth/me');
+          if (response.ok) {
+            const userData = await response.json();
+            setUserRole(userData.role);
+          }
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+        }
+      }
+    };
+    
+    fetchUserRole();
+  }, [isSignedIn]);
+  
   // Update optimistic post when actual post data changes
   useEffect(() => {
     if (post) {
       setOptimisticPost(post);
     }
   }, [post]);
+  
+  // Check if author is special or admin
+  const isSpecialOrAdmin = (authorDetails?.role === 'special' || authorDetails?.role === 'admin') || 
+                          (post?.author?.role === 'special' || post?.author?.role === 'admin');
   
   const { data: comments, error: commentsError, isLoading: commentsLoading } = useSWR(
     `/api/posts/${id}/comments`,
@@ -350,7 +374,7 @@ export default function PostDetail({ params }) {
 
         <main className="p-8">
           <Container className="py-6">
-            <Card className="mb-8">
+            <Card className={`mb-8 ${isSpecialOrAdmin ? 'border-green-500 border-2' : ''}`}>
               <div className="mb-6">
                 <div className="flex items-start space-x-3">
                   {/* Author Profile Image */}
@@ -374,8 +398,13 @@ export default function PostDetail({ params }) {
                   <div className="flex-1">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-md font-medium text-[#ededed]">
+                        <p className="text-md font-medium text-[#ededed] flex items-center">
                           {getAuthorDisplayName()}
+                          {isSpecialOrAdmin && (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
                         </p>
                         <div className="flex items-center text-xs text-zinc-400 space-x-2">
                           <span>{post.createdAt ? format(new Date(post.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}</span>
@@ -448,6 +477,35 @@ export default function PostDetail({ params }) {
                           </svg>
                           <span>Report</span>
                         </button>
+                        
+                        {/* Special user direct delete button */}
+                        {(userRole === 'special' || userRole === 'admin') && (
+                          <button 
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+                                fetch(`/api/posts/${id}/delete`, {
+                                  method: 'DELETE',
+                                }).then(response => {
+                                  if (response.ok) {
+                                    alert('Post deleted successfully');
+                                    router.push('/');
+                                  } else {
+                                    alert('Failed to delete post');
+                                  }
+                                }).catch(error => {
+                                  console.error('Error deleting post:', error);
+                                  alert('Error deleting post');
+                                });
+                              }
+                            }}
+                            className="flex items-center transition border border-zinc-700 hover:border-red-600 hover:bg-red-900/10 text-zinc-400 hover:text-red-400 rounded-md px-3 py-1.5 ml-3"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                            <span>Delete Post</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -527,11 +585,14 @@ export default function PostDetail({ params }) {
 
               <div className="space-y-6">
                 {comments && comments.map((comment) => {
-                  // Get the comment author's data
-                  const commentAuthor = comment.authorDetails || { clerkId: comment.author?.clerkId };
+                  // Get the comment author's data - now directly from the author field
+                  const commentAuthor = comment.author || { clerkId: 'Anonymous' };
+                  const isSpecialOrAdminComment = commentAuthor.role === 'special' || commentAuthor.role === 'admin';
                   
                   return (
-                    <Card key={comment._id} className="border border-zinc-800 hover:border-zinc-700 transition-colors">
+                    <Card key={comment._id} className={`border hover:border-zinc-700 transition-colors ${
+                      isSpecialOrAdminComment ? 'border-green-500 border-2' : 'border-zinc-800'
+                    }`}>
                       <div className="flex items-start space-x-3 mb-3">
                         {/* Comment Author Profile Image */}
                         <div className="relative flex-shrink-0 h-10 w-10 rounded-full overflow-hidden border border-zinc-700">
@@ -553,10 +614,15 @@ export default function PostDetail({ params }) {
                         
                         <div className="flex-1">
                           <div className="flex justify-between">
-                            <p className="text-sm font-medium text-[#ededed]">
+                            <p className="text-sm font-medium text-[#ededed] flex items-center">
                               {commentAuthor.firstName && commentAuthor.lastName 
                                 ? `${commentAuthor.firstName} ${commentAuthor.lastName}`
                                 : commentAuthor.username || 'Anonymous'}
+                              {isSpecialOrAdminComment && (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                              )}
                             </p>
                             {commentAuthor.role && commentAuthor.role !== 'normal' && (
                               <span className={`px-2 py-0.5 text-xs rounded-full ${

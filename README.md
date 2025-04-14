@@ -20,6 +20,36 @@ You can start editing the page by modifying `app/page.js`. The page auto-updates
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## ESOC App Features
+
+### News Tracker
+
+The News Tracker is an AI-powered feature that allows users to ask questions about news and events mentioned in user posts and comments. The system combines:
+
+1. **Local Knowledge Base**: Processes and indexes content from community posts and comments, extracting factual information
+2. **Hugging Face Models**: Uses transformer models for content processing and semantic search
+3. **Grok Integration**: Enhances responses with real-world data from Grok's knowledge base
+
+#### How It Works
+
+- The system automatically processes posts and comments in the background
+- Users ask natural language questions about news events
+- The system finds relevant information from community posts
+- Grok enhances the response with additional real-world context
+- Users can see both the community-sourced information and the Grok-enhanced response
+
+#### Setup Requirements
+
+To use the News Tracker feature, you need to:
+
+1. Get a Grok API key from xAI
+2. Add the API key to your `.env.local` file:
+   ```
+   GROK_API_KEY=your_grok_key_here
+   ```
+
+The News Tracker processes content hourly to keep information current. Users can filter queries by location for more relevant results.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -53,17 +53,60 @@ export async function GET(request) {
     // Build query based on role and parameters
     let query = {};
     
-    // Get status parameter
+    // Get parameters
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     const region = url.searchParams.get('region');
+    const acceptedByMe = url.searchParams.get('acceptedByMe') === 'true';
     
-    // Filter by status if provided
-    if (status) {
-      query.status = status;
-    } else if (user.role === 'special') {
-      // Special users can only see pending or their approved requests without filter
-      query.status = 'pending';
+    // If a special user is making the request
+    if (user.role === 'special') {
+      // Check if they want to see requests they've accepted
+      if (acceptedByMe) {
+        // Show all requests accepted by this user that are not completed
+        query = {
+          acceptedBy: user._id,
+          status: { $ne: 'completed' } // Exclude completed requests
+        };
+      }
+      // If status parameter is provided and not looking for acceptedByMe
+      else if (status) {
+        if (status === 'pending') {
+          // For pending status, exclude requests denied by this user
+          query = {
+            status: 'pending',
+            deniedBy: { $ne: user._id },
+            acceptedBy: { $exists: false }
+          };
+        } else {
+          // For other statuses (like "approved"), include only those accepted by this user
+          // or other statuses like "received", "prepared", etc. that are managed by this user
+          query = {
+            status: status,
+            acceptedBy: user._id
+          };
+        }
+      } else {
+        // No status parameter - use the original complex query
+        query = {
+          $or: [
+            {
+              status: 'pending',
+              deniedBy: { $ne: user._id },
+              acceptedBy: { $exists: false }
+            },
+            {
+              acceptedBy: user._id,
+              status: { $ne: 'completed' } // Exclude completed requests
+            }
+          ]
+        };
+      }
+    } else {
+      // For admin users, just filter by status if provided
+      if (status) {
+        query.status = status;
+      }
     }
     
     // Filter by region if provided (for special users in specific regions)

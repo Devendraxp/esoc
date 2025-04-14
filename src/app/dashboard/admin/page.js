@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { format } from 'date-fns';
@@ -36,6 +36,9 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState('users');
   const [userRole, setUserRole] = useState(null);
+  const [selectedUpgradeRequest, setSelectedUpgradeRequest] = useState(null);
+  const [upgradeRequestTab, setUpgradeRequestTab] = useState('pending');
+  const detailCardRef = useRef(null);
   
   // Fetch user role
   useEffect(() => {
@@ -82,6 +85,22 @@ export default function AdminDashboard() {
     checkUserRole();
   }, [router]);
 
+  // Handle click outside the detail card to close it
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (detailCardRef.current && !detailCardRef.current.contains(event.target)) {
+        setSelectedUpgradeRequest(null);
+      }
+    }
+    
+    // Add event listener for mousedown
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      // Remove event listener on cleanup
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // Fetch users
   const { data: users, error: usersError, isLoading: usersLoading, mutate: refreshUsers } = useSWR(
     '/api/users',
@@ -100,16 +119,16 @@ export default function AdminDashboard() {
     fetcher
   );
   
-  // Fetch all upgrade requests
+  // Fetch upgrade requests based on current tab
   const { data: upgradeRequests, error: upgradeError, isLoading: upgradeLoading, mutate: refreshUpgradeRequests } = useSWR(
-    '/api/users/upgrade-requests',
+    `/api/users/upgrade-requests?status=${upgradeRequestTab}`,
     fetcher
   );
   
   // Handle promote user to special role
   const handlePromoteUser = async (userId) => {
     try {
-      await fetch(`/api/users/${userId}/promote`, {
+      const response = await fetch(`/api/users/${userId}/promote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -117,7 +136,15 @@ export default function AdminDashboard() {
         body: JSON.stringify({ role: 'special' }),
       });
       
-      refreshUsers();
+      if (response.ok) {
+        // Refresh data after successful promotion
+        refreshUsers();
+        refreshUpgradeRequests();
+        // Close detail card if open
+        setSelectedUpgradeRequest(null);
+      } else {
+        console.error('Failed to promote user, server returned:', response.status);
+      }
     } catch (error) {
       console.error('Error promoting user:', error);
     }
@@ -151,6 +178,90 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error deleting user:', error);
     }
+  };
+
+  // Handle approve upgrade request
+  const handleApproveUpgradeRequest = async (userId) => {
+    try {
+      // First promote the user
+      const response = await fetch(`/api/users/${userId}/promote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: 'special' }),
+      });
+      
+      if (response.ok) {
+        // Next, update the upgrade request status directly with PATCH request
+        const updateResponse = await fetch(`/api/users/${userId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'upgradeRequest.status': 'approved',
+            'upgradeRequest.reviewedAt': new Date()
+          }),
+        });
+        
+        if (!updateResponse.ok) {
+          console.error('Failed to update upgrade request status, server returned:', updateResponse.status);
+        }
+        
+        // Refresh data after successful approval
+        refreshUpgradeRequests();
+        refreshUsers();
+        // Close detail card if open
+        setSelectedUpgradeRequest(null);
+      } else {
+        console.error('Failed to approve upgrade request, server returned:', response.status);
+      }
+    } catch (error) {
+      console.error('Error approving upgrade request:', error);
+    }
+  };
+
+  // Handle deny upgrade request
+  const handleDenyUpgradeRequest = async (userId) => {
+    if (!confirm('Are you sure you want to deny this upgrade request?')) {
+      return;
+    }
+    
+    try {
+      // Update the status to rejected using the user update endpoint
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          'upgradeRequest.status': 'rejected',
+          'upgradeRequest.reviewedAt': new Date()
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to deny upgrade request, server returned:', response.status);
+      } else {
+        // Refresh data after denial
+        refreshUpgradeRequests();
+        // Close detail card if open
+        setSelectedUpgradeRequest(null);
+      }
+    } catch (error) {
+      console.error('Error denying upgrade request:', error);
+    }
+  };
+
+  // Open upgrade request detail card
+  const openRequestDetail = (request) => {
+    setSelectedUpgradeRequest(request);
+  };
+
+  // Close upgrade request detail card
+  const closeRequestDetail = () => {
+    setSelectedUpgradeRequest(null);
   };
   
   // If still checking role, show loading
@@ -332,6 +443,42 @@ export default function AdminDashboard() {
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-semibold text-[#ededed]">Upgrade Requests</h2>
                     </div>
+
+                    {/* Tabs for Upgrade Requests */}
+                    <div className="mb-6">
+                      <div className="flex space-x-4">
+                        <button
+                          onClick={() => setUpgradeRequestTab('pending')}
+                          className={`py-2 px-4 font-medium text-sm ${
+                            upgradeRequestTab === 'pending'
+                              ? 'bg-zinc-800 text-primary rounded-t border-b-2 border-primary'
+                              : 'text-zinc-400 hover:text-[#ededed]'
+                          }`}
+                        >
+                          Pending
+                        </button>
+                        <button
+                          onClick={() => setUpgradeRequestTab('approved')}
+                          className={`py-2 px-4 font-medium text-sm ${
+                            upgradeRequestTab === 'approved'
+                              ? 'bg-zinc-800 text-green-300 rounded-t border-b-2 border-green-500'
+                              : 'text-zinc-400 hover:text-[#ededed]'
+                          }`}
+                        >
+                          Approved
+                        </button>
+                        <button
+                          onClick={() => setUpgradeRequestTab('rejected')}
+                          className={`py-2 px-4 font-medium text-sm ${
+                            upgradeRequestTab === 'rejected'
+                              ? 'bg-zinc-800 text-red-300 rounded-t border-b-2 border-red-500'
+                              : 'text-zinc-400 hover:text-[#ededed]'
+                          }`}
+                        >
+                          Rejected
+                        </button>
+                      </div>
+                    </div>
                     
                     {upgradeLoading ? (
                       <div className="flex justify-center items-center h-40">
@@ -350,26 +497,28 @@ export default function AdminDashboard() {
                         <table className="min-w-full divide-y divide-zinc-800">
                           <thead className="bg-zinc-800">
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">User ID</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Organization/Department</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Name</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Email</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Region</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Requested Role</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Actions</th>
+                              {upgradeRequestTab === 'pending' && (
+                                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Actions</th>
+                              )}
+                              {upgradeRequestTab !== 'pending' && (
+                                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">Date Reviewed</th>
+                              )}
                             </tr>
                           </thead>
                           <tbody className="bg-zinc-900 divide-y divide-zinc-800">
                             {upgradeRequests.map((request) => (
-                              <tr key={request.userId} className="hover:bg-zinc-800/50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
-                                  <div>
-                                    <span className="font-mono">{request.userId}</span>
-                                    {(request.firstName || request.lastName) && (
-                                      <div className="mt-1 text-xs text-primary">
-                                        {[request.firstName, request.lastName].filter(Boolean).join(' ')}
-                                      </div>
-                                    )}
-                                  </div>
+                              <tr 
+                                key={request.clerkId || request._id} 
+                                className="hover:bg-zinc-800/50 cursor-pointer"
+                                onClick={() => openRequestDetail(request)}
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#ededed]">
+                                  {request.upgradeRequest?.organization || 'Unknown Organization'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#ededed]">
                                   {[request.firstName, request.lastName].filter(Boolean).join(' ') || 'Unnamed'}
@@ -378,32 +527,167 @@ export default function AdminDashboard() {
                                   {request.email || 'No email'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
-                                  {request.region || 'Not specified'}
+                                  {request.profile_location || 'Not specified'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#ededed]">
                                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-zinc-800 text-zinc-300">
-                                    {request.requestedRole || 'special'}
+                                    {request.upgradeRequest?.requestedRole || 'special'}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2 flex">
-                                  <Button
-                                    onClick={() => handlePromoteUser(request.userId)}
-                                    className="bg-zinc-700 hover:bg-zinc-600 text-[#ededed] text-xs py-1 px-2"
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    variant="secondary"
-                                    onClick={() => handleDeleteUser(request.userId)}
-                                    className="bg-red-900/30 text-red-300 hover:bg-red-900/50 text-xs py-1 px-2"
-                                  >
-                                    Deny
-                                  </Button>
-                                </td>
+                                {upgradeRequestTab === 'pending' && (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2 flex">
+                                    <Button
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent row click
+                                        handleApproveUpgradeRequest(request.clerkId || request._id);
+                                      }}
+                                      className="bg-green-700 hover:bg-green-600 text-white text-xs py-1 px-2"
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      variant="secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent row click
+                                        handleDenyUpgradeRequest(request.clerkId || request._id);
+                                      }}
+                                      className="bg-red-900/30 text-red-300 hover:bg-red-900/50 text-xs py-1 px-2"
+                                    >
+                                      Deny
+                                    </Button>
+                                  </td>
+                                )}
+                                {upgradeRequestTab !== 'pending' && (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                                    {request.upgradeRequest?.reviewedAt ? 
+                                      format(new Date(request.upgradeRequest.reviewedAt), 'MMM d, yyyy') : 
+                                      'Unknown'}
+                                  </td>
+                                )}
                               </tr>
                             ))}
                           </tbody>
                         </table>
+                      </div>
+                    )}
+
+                    {/* Upgrade Request Detail Modal */}
+                    {selectedUpgradeRequest && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+                        <div 
+                          ref={detailCardRef}
+                          className="bg-zinc-900 border border-zinc-800 rounded-lg max-w-xl w-full overflow-hidden shadow-xl relative max-h-[90vh] overflow-y-auto"
+                        >
+                          {/* Close button */}
+                          <button 
+                            onClick={closeRequestDetail}
+                            className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+
+                          <div className="p-6">
+                            <h3 className="text-xl font-semibold mb-4 text-[#ededed]">
+                              Upgrade Request Details
+                            </h3>
+                            
+                            <div className="space-y-4 mb-6">
+                              <div>
+                                <p className="text-sm font-medium text-zinc-400">Organization/Department</p>
+                                <p className="text-lg text-[#ededed]">
+                                  {selectedUpgradeRequest.upgradeRequest?.organization || 'Unknown Organization'}
+                                </p>
+                              </div>
+                              
+                              <div>
+                                <p className="text-sm font-medium text-zinc-400">Full Name</p>
+                                <p className="text-[#ededed]">
+                                  {[selectedUpgradeRequest.firstName, selectedUpgradeRequest.lastName].filter(Boolean).join(' ') || 'Unnamed'}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-sm font-medium text-zinc-400">Email</p>
+                                <p className="text-[#ededed]">
+                                  {selectedUpgradeRequest.email || 'No email provided'}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-sm font-medium text-zinc-400">Location</p>
+                                <p className="text-[#ededed]">
+                                  {selectedUpgradeRequest.profile_location || 'Not specified'}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-sm font-medium text-zinc-400">User ID</p>
+                                <p className="text-[#ededed] text-sm font-mono">
+                                  {selectedUpgradeRequest.clerkId || selectedUpgradeRequest._id}
+                                </p>
+                              </div>
+
+                              {selectedUpgradeRequest.upgradeRequest?.reason && (
+                                <div>
+                                  <p className="text-sm font-medium text-zinc-400">Reason for Request</p>
+                                  <p className="text-[#ededed] bg-zinc-800 p-3 rounded-md">
+                                    {selectedUpgradeRequest.upgradeRequest.reason}
+                                  </p>
+                                </div>
+                              )}
+
+                              <div>
+                                <p className="text-sm font-medium text-zinc-400">Requested On</p>
+                                <p className="text-[#ededed]">
+                                  {selectedUpgradeRequest.upgradeRequest?.requestedAt 
+                                    ? format(new Date(selectedUpgradeRequest.upgradeRequest.requestedAt), 'PPP')
+                                    : 'Unknown date'}
+                                </p>
+                              </div>
+
+                              {selectedUpgradeRequest.upgradeRequest?.status !== 'pending' && selectedUpgradeRequest.upgradeRequest?.reviewedAt && (
+                                <div>
+                                  <p className="text-sm font-medium text-zinc-400">Reviewed On</p>
+                                  <p className="text-[#ededed]">
+                                    {format(new Date(selectedUpgradeRequest.upgradeRequest.reviewedAt), 'PPP')}
+                                  </p>
+                                </div>
+                              )}
+
+                              {selectedUpgradeRequest.upgradeRequest?.status !== 'pending' && (
+                                <div>
+                                  <p className="text-sm font-medium text-zinc-400">Status</p>
+                                  <p className={`inline-flex px-2 py-1 rounded-full text-sm ${
+                                    selectedUpgradeRequest.upgradeRequest?.status === 'approved'
+                                      ? 'bg-green-900/30 text-green-300'
+                                      : 'bg-red-900/30 text-red-300'
+                                  }`}>
+                                    {selectedUpgradeRequest.upgradeRequest?.status}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {selectedUpgradeRequest.upgradeRequest?.status === 'pending' && (
+                              <div className="flex justify-end space-x-3 pt-4 border-t border-zinc-800">
+                                <Button
+                                  onClick={() => handleDenyUpgradeRequest(selectedUpgradeRequest.clerkId || selectedUpgradeRequest._id)}
+                                  className="bg-red-900/30 text-red-300 hover:bg-red-900/50 px-4 py-2"
+                                >
+                                  Deny Request
+                                </Button>
+                                <Button
+                                  onClick={() => handleApproveUpgradeRequest(selectedUpgradeRequest.clerkId || selectedUpgradeRequest._id)}
+                                  className="bg-green-700 hover:bg-green-600 text-white px-4 py-2"
+                                >
+                                  Approve Request
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

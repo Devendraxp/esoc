@@ -1,10 +1,5 @@
 import mongoose from 'mongoose';
 
-// Clear model if it exists to ensure clean rebuild
-if (mongoose.models.Comment) {
-  delete mongoose.models.Comment;
-}
-
 const CommentSchema = new mongoose.Schema({
   post: {
     type: mongoose.Schema.Types.ObjectId,
@@ -12,7 +7,8 @@ const CommentSchema = new mongoose.Schema({
     required: true
   },
   author: {
-    type: String, // Changed to String to accept Clerk user IDs
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
   content: {
@@ -21,18 +17,27 @@ const CommentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Virtual for populating author from User model
-CommentSchema.virtual('authorDetails', {
-  ref: 'User',
-  localField: 'author',
-  foreignField: 'clerkId',
-  justOne: true
-});
-
 // Ensure virtuals are included in JSON
 CommentSchema.set('toJSON', { virtuals: true });
 CommentSchema.set('toObject', { virtuals: true });
 
-const Comment = mongoose.models.Comment || mongoose.model('Comment', CommentSchema);
+// Safe model registration that checks for Edge runtime
+let Comment;
+try {
+  // Only check/delete the model in non-edge environments
+  if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge' && mongoose.models.Comment) {
+    delete mongoose.models.Comment;
+  }
+  
+  // Register model
+  Comment = mongoose.models.Comment || mongoose.model('Comment', CommentSchema);
+} catch (error) {
+  console.error('Error registering Comment model:', error);
+  // Provide a minimal model stub for Edge runtime
+  Comment = { 
+    findById: () => Promise.resolve(null),
+    find: () => Promise.resolve([])
+  };
+}
 
 export default Comment;

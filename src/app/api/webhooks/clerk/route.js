@@ -88,6 +88,15 @@ export async function POST(request) {
     else if (type === 'user.deleted') {
       await handleUserDeleted(data);
     }
+    // Handle user sign-in event to update lastActiveAt
+    else if (type === 'session.created' || type === 'session.revoked') {
+      if (data.user_id) {
+        await User.findOneAndUpdate(
+          { clerkId: data.user_id },
+          { $set: { lastActiveAt: new Date() } }
+        );
+      }
+    }
     
     return NextResponse.json({ message: 'Webhook processed successfully' });
   } catch (error) {

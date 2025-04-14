@@ -42,13 +42,27 @@ export async function POST(request) {
     await connectToDatabase();
     
     // Find the user
-    const user = await User.findOne({ clerkId: userId });
+    let user = await User.findOne({ clerkId: userId });
     
+    // If user doesn't exist, create a new user record
     if (!user) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
-      );
+      try {
+        // Create a basic user record with Clerk ID
+        user = new User({
+          clerkId: userId,
+          role: 'normal',
+          joinedAt: new Date()
+        });
+        
+        await user.save();
+        console.log(`Created new user record for clerkId: ${userId}`);
+      } catch (createError) {
+        console.error('Error creating user record:', createError);
+        return NextResponse.json(
+          { message: 'Failed to create user record', error: createError.message },
+          { status: 500 }
+        );
+      }
     }
     
     // Check if user is already special or admin

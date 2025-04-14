@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
 import Report from '../../../models/Report';
+import Post from '../../../models/Post';
+import Comment from '../../../models/Comment';
+import User from '../../../models/User';
 
 // Database connection function
 async function connectToDatabase() {
@@ -30,7 +33,7 @@ export async function GET(request) {
       );
     }
     
-    // Parse URL to extract region query parameter
+    // Parse URL to extract query parameters
     const url = new URL(request.url);
     const region = url.searchParams.get('region');
     const status = url.searchParams.get('status') || 'pending';
@@ -38,7 +41,6 @@ export async function GET(request) {
     await connectToDatabase();
     
     // Find the user to check their role
-    const User = mongoose.model('User');
     const user = await User.findOne({ clerkId: userId });
     
     if (!user) {
@@ -48,7 +50,7 @@ export async function GET(request) {
       );
     }
     
-    // Only admins and special users can view reports
+    // Only special users can view reports
     if (user.role !== 'admin' && user.role !== 'special') {
       return NextResponse.json(
         { message: 'Unauthorized - Admin or special user access required' },
@@ -59,10 +61,14 @@ export async function GET(request) {
     // Build query
     let query = { status };
     
+    // Add seenBy filter to exclude reports already seen by this user
+    if (status === 'pending') {
+      query.seenBy = { $nin: [user._id] };
+    }
+    
     // If region is provided and the user is a special user, filter by region
     if (region && user.role === 'special') {
-      // We need to find posts first from that region
-      const Post = mongoose.model('Post');
+      // Find posts from that region
       const posts = await Post.find({
         'author.profile_location': { $regex: region, $options: 'i' }
       }).select('_id');
@@ -75,11 +81,23 @@ export async function GET(request) {
     const reports = await Report.find(query)
       .populate({
         path: 'post',
-        select: 'content author createdAt fakeScore'
+        select: 'content author createdAt'
+      })
+      .populate({
+        path: 'comment',
+        select: 'content author post createdAt'
       })
       .populate({
         path: 'reporter',
         select: 'clerkId username firstName lastName email profileImageUrl profile_location role'
+      })
+      .populate({
+        path: 'handledBy',
+        select: 'clerkId username firstName lastName email profileImageUrl'
+      })
+      .populate({
+        path: 'seenBy',
+        select: 'clerkId username'
       })
       .sort({ createdAt: -1 });
     
@@ -104,7 +122,14 @@ export async function POST(request) {
       );
     }
     
-    const { postId, reason } = await request.json();
+    const { type, postId, commentId, content } = await request.json();
+    
+    if (!type || (type !== 'post' && type !== 'comment')) {
+      return NextResponse.json(
+        { message: 'Valid report type (post or comment) is required' },
+        { status: 400 }
+      );
+    }
     
     if (!postId) {
       return NextResponse.json(
@@ -113,9 +138,16 @@ export async function POST(request) {
       );
     }
     
-    if (!reason || reason.trim() === '') {
+    if (type === 'comment' && !commentId) {
       return NextResponse.json(
-        { message: 'Reason for report is required' },
+        { message: 'Comment ID is required for comment reports' },
+        { status: 400 }
+      );
+    }
+    
+    if (!content || content.trim() === '') {
+      return NextResponse.json(
+        { message: 'Report content is required' },
         { status: 400 }
       );
     }
@@ -123,7 +155,6 @@ export async function POST(request) {
     await connectToDatabase();
     
     // Find the user to check their role
-    const User = mongoose.model('User');
     const user = await User.findOne({ clerkId: userId });
     
     if (!user) {
@@ -134,7 +165,6 @@ export async function POST(request) {
     }
     
     // Find the post
-    const Post = mongoose.model('Post');
     const post = await Post.findById(postId);
     
     if (!post) {
@@ -144,40 +174,66 @@ export async function POST(request) {
       );
     }
     
+    // Find the comment if this is a comment report
+    let comment = null;
+    if (type === 'comment') {
+      comment = await Comment.findById(commentId);
+      if (!comment) {
+        return NextResponse.json(
+          { message: 'Comment not found' },
+          { status: 404 }
+        );
+      }
+    }
+    
     // Create a new report
-    const report = new Report({
+    const reportData = {
+      type,
       post: postId,
       reporter: user._id,
-      reason: reason.trim(),
-      status: 'pending'
-    });
+      content: content.trim(),
+      status: 'pending',
+      seenBy: []
+    };
     
+    if (type === 'comment') {
+      reportData.comment = commentId;
+    }
+    
+    // Special users can directly take action
+    if (user.role === 'special' || user.role === 'admin') {
+      reportData.status = 'agreed';
+      reportData.handledBy = user._id;
+    }
+    
+    const report = new Report(reportData);
     await report.save();
     
-    // If the user is a special user or admin, automatically delete the post
+    // If the user is a special user or admin, automatically take action
     if (user.role === 'special' || user.role === 'admin') {
-      report.status = 'approved';
-      await report.save();
-      
-      // Delete the post
-      await Post.findByIdAndDelete(postId);
+      // Delete the content based on type
+      if (type === 'post') {
+        await Post.findByIdAndDelete(postId);
+      } else if (type === 'comment') {
+        await Comment.findByIdAndDelete(commentId);
+      }
       
       return NextResponse.json({
-        message: 'Post reported and deleted successfully',
+        message: `${type === 'post' ? 'Post' : 'Comment'} reported and deleted successfully`,
         report: await Report.findById(report._id)
           .populate('reporter', 'clerkId username firstName lastName email profileImageUrl')
       });
     }
     
     return NextResponse.json({
-      message: 'Post reported successfully',
+      message: `${type === 'post' ? 'Post' : 'Comment'} reported successfully`,
       report: await Report.findById(report._id)
         .populate('reporter', 'clerkId username firstName lastName email profileImageUrl')
     });
   } catch (error) {
-    console.error('Error reporting post:', error);
+    console.error('Error reporting content:', error);
     return NextResponse.json(
-      { message: 'Failed to report post', error: error.message },
+      { message: 'Failed to report content', error: error.message },
       { status: 500 }
     );
   }

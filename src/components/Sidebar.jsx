@@ -14,7 +14,8 @@ const Sidebar = ({ userRole = 'normal' }) => {
   const navItems = [
     { name: 'Home', href: '/' },
     { name: 'Create Post', href: '/create-post' },
-    { name: 'Apply for Aid', href: '/apply-aid' }, // Fixed path
+    { name: 'Apply for Aid', href: '/apply-aid' },
+    { name: 'News Tracker', href: '/news-tracker' }, // Added News Tracker link
   ];
   
   // Admin & Special user links - conditionally displayed

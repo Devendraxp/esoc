@@ -786,13 +786,22 @@ export default function ProfilePage() {
                     </div>
                   )}
                   
-                  <div className="border-t border-zinc-800 pt-6">
+                  <div className="border-t border-zinc-800 pt-6 flex flex-col md:flex-row justify-between">
                     <Button 
                       onClick={() => openUserProfile()}
-                      className="bg-zinc-800 hover:bg-zinc-700 transition px-6 py-2 rounded-md"
+                      className="bg-zinc-800 hover:bg-zinc-700 transition px-6 py-2 rounded-md mb-4 md:mb-0"
                     >
                       Manage Account Settings
                     </Button>
+
+                    {userRole === 'normal' && (
+                      <Button 
+                        onClick={() => router.push('/profile/request-upgrade')}
+                        className="bg-blue-900/20 text-blue-400 border border-blue-700 hover:bg-blue-800/30 transition px-6 py-2 rounded-md"
+                      >
+                        Request Special User Access
+                      </Button>
+                    )}
                   </div>
                 </Card>
               </>

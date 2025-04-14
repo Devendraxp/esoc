@@ -64,6 +64,7 @@ export async function POST(request, { params }) {
     aidRequest.status = 'approved';
     aidRequest.respondedBy = user._id; // Use MongoDB _id
     aidRequest.respondedAt = new Date();
+    aidRequest.acceptedBy = user._id; // Set the acceptedBy field to the current user
     
     await aidRequest.save();
     

@@ -10,6 +10,7 @@ import Input from './Input';
 import ImageSlider from './ImageSlider';
 import { useUser } from '@clerk/nextjs';
 import { mutate } from 'swr';
+import ReportPostModal from './reports/ReportPostModal';
 
 const PostCard = ({ post, onCommentAdded }) => {
   const router = useRouter();
@@ -25,17 +26,42 @@ const PostCard = ({ post, onCommentAdded }) => {
   // State for post options menu
   const [showOptions, setShowOptions] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const optionsRef = React.useRef(null);
   
   // Check if user is the post author
   const isAuthor = user && (optimisticPost.author?.clerkId === user.id);
   
+  // Check if user is special or admin
+  const [userRole, setUserRole] = useState(null);
+  const isSpecialOrAdmin = userRole === 'special' || userRole === 'admin';
+  
+  // Check if author is special or admin
+  const isAuthorSpecialOrAdmin = (authorData?.role === 'special' || authorData?.role === 'admin') || 
+                          (optimisticPost.authorDetails?.role === 'special' || optimisticPost.authorDetails?.role === 'admin');
+  
   // Update optimistic post when the actual post changes
   useEffect(() => {
     setOptimisticPost(post);
   }, [post]);
+  
+  // Fetch current user role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (isSignedIn && user?.id) {
+        try {
+          const response = await fetch('/api/auth/me');
+          if (response.ok) {
+            const userData = await response.json();
+            setUserRole(userData.role);
+          }
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+        }
+      }
+    };
+    
+    fetchUserRole();
+  }, [isSignedIn, user]);
   
   // Fetch author details if not already included in the post
   useEffect(() => {
@@ -89,7 +115,12 @@ const PostCard = ({ post, onCommentAdded }) => {
     
     if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
       try {
-        const response = await fetch(`/api/posts/${optimisticPost._id}`, {
+        // If user is a special user or admin, use the special delete endpoint
+        const endpoint = isSpecialOrAdmin && !isAuthor 
+          ? `/api/posts/${optimisticPost._id}/delete` 
+          : `/api/posts/${optimisticPost._id}`;
+          
+        const response = await fetch(endpoint, {
           method: 'DELETE',
         });
         
@@ -116,40 +147,9 @@ const PostCard = ({ post, onCommentAdded }) => {
     setShowReportModal(true);
   };
   
-  // Handle report submission
-  const submitReport = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!reportReason.trim()) {
-      alert('Please provide a reason for reporting this post');
-      return;
-    }
-    
-    setIsSubmittingReport(true);
-    
-    try {
-      const response = await fetch(`/api/posts/${optimisticPost._id}/report`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reason: reportReason }),
-      });
-      
-      if (response.ok) {
-        alert('Post reported successfully');
-        setReportReason('');
-        setShowReportModal(false);
-      } else {
-        alert('Failed to report post');
-      }
-    } catch (error) {
-      console.error('Error reporting post:', error);
-      alert('Error reporting post');
-    } finally {
-      setIsSubmittingReport(false);
-    }
+  // Handle closing report modal
+  const closeReportModal = () => {
+    setShowReportModal(false);
   };
   
   // Format the creation time to show "X time ago"
@@ -393,7 +393,9 @@ const PostCard = ({ post, onCommentAdded }) => {
   
   return (
     <Card 
-      className="hover:border-blue-700 transition-colors cursor-pointer overflow-hidden"
+      className={`hover:border-blue-700 transition-colors cursor-pointer overflow-hidden ${
+        isAuthorSpecialOrAdmin ? 'border-green-500 border-2' : ''
+      }`}
     >
       <div onClick={handlePostClick}>
         <div className="flex items-start space-x-3 mb-4">
@@ -411,7 +413,14 @@ const PostCard = ({ post, onCommentAdded }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between">
               <div>
-                <h3 className="text-sm font-medium text-[#ededed] mr-2 truncate">{getAuthorDisplayName()}</h3>
+                <h3 className="text-sm font-medium text-[#ededed] mr-2 truncate flex items-center">
+                  {getAuthorDisplayName()}
+                  {isAuthorSpecialOrAdmin && (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </h3>
                 <span className="text-xs text-zinc-500">{timeAgo}</span>
               </div>
               
@@ -437,6 +446,21 @@ const PostCard = ({ post, onCommentAdded }) => {
                           className="block w-full text-left px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-700 hover:text-white"
                         >
                           Edit Post
+                        </button>
+                        <button 
+                          onClick={handleDeletePost}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-zinc-700 hover:text-white"
+                        >
+                          Delete Post
+                        </button>
+                      </>
+                    ) : isSpecialOrAdmin ? (
+                      <>
+                        <button 
+                          onClick={openReportModal}
+                          className="block w-full text-left px-4 py-2 text-sm text-yellow-400 hover:bg-zinc-700 hover:text-white"
+                        >
+                          Report Post
                         </button>
                         <button 
                           onClick={handleDeletePost}
@@ -556,44 +580,13 @@ const PostCard = ({ post, onCommentAdded }) => {
         )}
       </div>
       
-      {/* Report modal */}
-      {showReportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
-          <div className="bg-zinc-800 border border-zinc-700 rounded-md p-4 w-96">
-            <h3 className="text-lg text-white mb-4">Report Post</h3>
-            <form onSubmit={submitReport}>
-              <textarea 
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                placeholder="Reason for reporting this post..."
-                className="w-full h-24 bg-zinc-900 border border-zinc-700 rounded-md p-2 text-white"
-              />
-              <div className="flex items-center justify-end space-x-2 mt-4">
-                <Button 
-                  type="button"
-                  onClick={() => setShowReportModal(false)}
-                  className="text-sm py-2 px-4 border border-zinc-700 rounded-md bg-zinc-700 hover:bg-zinc-600"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit"
-                  disabled={isSubmittingReport}
-                  className={`text-sm py-2 px-4 border border-zinc-700 rounded-md ${
-                    isSubmittingReport ? 'bg-blue-900/30 text-blue-300' : 'bg-primary hover:bg-primary/80'
-                  }`}
-                >
-                  {isSubmittingReport ? (
-                    <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
-                  ) : (
-                    'Submit'
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Report post modal using our new component */}
+      <ReportPostModal 
+        isOpen={showReportModal}
+        onClose={closeReportModal}
+        postId={optimisticPost._id}
+        postContent={optimisticPost.content}
+      />
     </Card>
   );
 };

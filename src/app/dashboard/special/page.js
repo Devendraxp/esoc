@@ -20,6 +20,7 @@ export default function SpecialDashboard() {
   const [activeTab, setActiveTab] = useState('aid');
   const [userRole, setUserRole] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState(null); // For the popup modal
   
   // Fetch user role
   useEffect(() => {
@@ -49,30 +50,36 @@ export default function SpecialDashboard() {
 
   // Fetch aid requests
   const { data: aidRequests, error: aidError, isLoading: aidLoading, mutate: refreshAidRequests } = useSWR(
-    '/api/aid-requests?status=pending',
+    '/api/aid-requests/all?status=pending',
     fetcher
   );
   
   // Fetch approved aid requests assigned to this special user
+  // Now fetching all in-progress aid requests that are not completed
   const { data: approvedRequests, error: approvedError, isLoading: approvedLoading, mutate: refreshApproved } = useSWR(
-    '/api/aid-requests?status=approved',
+    '/api/aid-requests/all?acceptedByMe=true',
     fetcher
   );
   
   // Fetch reported posts filtered by region if selected
   const { data: reportedPosts, error: reportsError, isLoading: reportsLoading, mutate: refreshReports } = useSWR(
-    `/api/reports${selectedRegion ? `?region=${encodeURIComponent(selectedRegion)}` : ''}`,
+    `/api/reports/all${selectedRegion ? `?region=${encodeURIComponent(selectedRegion)}` : ''}`,
     fetcher
   );
   
   // Handle aid request approval
   const handleApproveAid = async (requestId) => {
     try {
-      await fetch(`/api/aid-requests/${requestId}/approve`, {
+      const response = await fetch(`/api/aid-requests/${requestId}/approve`, {
         method: 'POST',
       });
       
+      if (!response.ok) {
+        console.error('Error approving request:', await response.text());
+      }
+      
       refreshAidRequests();
+      setSelectedRequest(null); // Close the modal after action
     } catch (error) {
       console.error('Error approving aid request:', error);
     }
@@ -81,20 +88,30 @@ export default function SpecialDashboard() {
   // Handle aid request denial
   const handleDenyAid = async (requestId) => {
     try {
-      await fetch(`/api/aid-requests/${requestId}/deny`, {
+      const response = await fetch(`/api/aid-requests/${requestId}/deny`, {
         method: 'POST',
       });
       
+      if (!response.ok) {
+        console.error('Error denying request:', await response.text());
+      }
+      
       refreshAidRequests();
+      setSelectedRequest(null); // Close the modal after action
     } catch (error) {
       console.error('Error denying aid request:', error);
     }
   };
   
+  // Handle opening the request detail modal
+  const openRequestDetail = (request) => {
+    setSelectedRequest(request);
+  };
+  
   // Handle updating aid request status
   const handleUpdateAidStatus = async (requestId, status) => {
     try {
-      await fetch(`/api/aid-requests/${requestId}/update`, {
+      const response = await fetch(`/api/aid-requests/${requestId}/update`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -102,9 +119,38 @@ export default function SpecialDashboard() {
         body: JSON.stringify({ status }),
       });
       
+      if (!response.ok) {
+        console.error('Error updating request status:', await response.text());
+      }
+      
+      // Refresh both pending and approved requests to ensure UI stays updated
       refreshApproved();
+      refreshAidRequests();
     } catch (error) {
       console.error('Error updating aid request status:', error);
+    }
+  };
+  
+  // Handle completing an aid request
+  const handleCompleteAid = async (requestId) => {
+    try {
+      const response = await fetch(`/api/aid-requests/${requestId}/update`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+      
+      if (!response.ok) {
+        console.error('Error completing request:', await response.text());
+      }
+      
+      // Refresh both pending and approved requests
+      refreshApproved();
+      refreshAidRequests();
+    } catch (error) {
+      console.error('Error completing aid request:', error);
     }
   };
   
@@ -230,9 +276,10 @@ export default function SpecialDashboard() {
                             {aidRequests?.map((request) => (
                               <tr 
                                 key={request._id} 
-                                className={`hover:bg-zinc-800/50 ${
+                                className={`hover:bg-zinc-800/50 cursor-pointer ${
                                   request.requesterRole === 'special' ? 'bg-purple-900/20' : ''
                                 }`}
+                                onClick={() => openRequestDetail(request)}
                               >
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#ededed]">
                                   {request.requesterRole === 'special' && (
@@ -251,7 +298,7 @@ export default function SpecialDashboard() {
                                 <td className="px-6 py-4 text-sm text-zinc-400 max-w-xs truncate">
                                   {request.adminNote || 'No additional information'}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3 flex">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3 flex" onClick={(e) => e.stopPropagation()}>
                                   <Button
                                     onClick={() => handleApproveAid(request._id)}
                                     className="bg-green-800 hover:bg-green-700 text-[#ededed]"
@@ -340,6 +387,8 @@ export default function SpecialDashboard() {
                                       ? 'bg-orange-900/30 text-orange-300'
                                       : request.status === 'delivered'
                                       ? 'bg-purple-900/30 text-purple-300'
+                                      : request.status === 'completed'
+                                      ? 'bg-indigo-900/30 text-indigo-300'
                                       : 'bg-zinc-800 text-zinc-300'
                                   }`}>
                                     {request.status === 'approved' ? 'Approved' : 
@@ -347,6 +396,7 @@ export default function SpecialDashboard() {
                                      request.status === 'prepared' ? 'Aid Prepared' :
                                      request.status === 'shipped' ? 'Shipped' :
                                      request.status === 'delivered' ? 'Delivered' :
+                                     request.status === 'completed' ? 'Completed' :
                                      'Unknown'}
                                   </span>
                                 </td>
@@ -369,6 +419,13 @@ export default function SpecialDashboard() {
                                       className="bg-zinc-700 hover:bg-zinc-600 text-[#ededed] text-xs py-1 px-2"
                                     >
                                       Update
+                                    </Button>
+                                    
+                                    <Button
+                                      onClick={() => handleCompleteAid(request._id)}
+                                      className="bg-purple-900/50 hover:bg-purple-900/70 text-[#ededed] text-xs py-1 px-2"
+                                    >
+                                      Complete
                                     </Button>
                                   </div>
                                 </td>
@@ -487,6 +544,99 @@ export default function SpecialDashboard() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+                
+                {/* Aid Request Detail Modal */}
+                {selectedRequest && (
+                  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg max-w-2xl w-full overflow-hidden shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+                      {/* Close button */}
+                      <div className="flex justify-end mb-4">
+                        <button 
+                          onClick={() => setSelectedRequest(null)}
+                          className="text-zinc-400 hover:text-white p-1 rounded-full"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      <h2 className="text-xl font-semibold mb-4 text-[#ededed]">Aid Request Details</h2>
+                      
+                      <div className="bg-zinc-800 p-6 rounded-lg mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <p className="text-sm font-medium text-zinc-400 mb-1">Region</p>
+                            <p className="text-[#ededed] mb-4">
+                              {selectedRequest.region}
+                              {selectedRequest.requesterRole === 'special' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-900 text-purple-200 ml-2">
+                                  Priority
+                                </span>
+                              )}
+                            </p>
+                            
+                            <p className="text-sm font-medium text-zinc-400 mb-1">Requested On</p>
+                            <p className="text-[#ededed] mb-4">{format(new Date(selectedRequest.createdAt), 'PPP')}</p>
+                            
+                            <p className="text-sm font-medium text-zinc-400 mb-1">Status</p>
+                            <p className="text-[#ededed] mb-4">
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-900/30 text-yellow-300">
+                                Pending
+                              </span>
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm font-medium text-zinc-400 mb-1">Requesters</p>
+                            <p className="text-[#ededed] mb-4">{selectedRequest.requesters?.length || 1} people</p>
+                            
+                            {selectedRequest.requesters && selectedRequest.requesters[0] && (
+                              <>
+                                <p className="text-sm font-medium text-zinc-400 mb-1">Requester Details</p>
+                                <p className="text-[#ededed] mb-4">
+                                  {selectedRequest.requesters[0].firstName 
+                                    ? `${selectedRequest.requesters[0].firstName} ${selectedRequest.requesters[0].lastName || ''}`
+                                    : selectedRequest.requesters[0].email || 'Anonymous'}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-zinc-400 mb-2">Additional Information</p>
+                          <p className="text-[#ededed] bg-zinc-900 p-4 rounded-md">
+                            {selectedRequest.adminNote || 'No additional information provided.'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-4">
+                        <Button
+                          variant="secondary"
+                          onClick={() => setSelectedRequest(null)}
+                          className="px-6 py-2 border border-zinc-700 rounded-md bg-zinc-800/60 hover:bg-zinc-700/60"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => handleDenyAid(selectedRequest._id)}
+                          className="bg-red-900/50 hover:bg-red-900/70 text-[#ededed]"
+                        >
+                          Deny Request
+                        </Button>
+                        <Button
+                          onClick={() => handleApproveAid(selectedRequest._id)}
+                          className="bg-green-800 hover:bg-green-700 text-[#ededed]"
+                        >
+                          Approve Request
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </Container>

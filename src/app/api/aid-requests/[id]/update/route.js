@@ -34,7 +34,7 @@ export async function PATCH(request, { params }) {
     const id = params.id;
     const { status, note } = await request.json();
     
-    if (!status || !['received', 'prepared', 'shipped', 'delivered'].includes(status)) {
+    if (!status || !['received', 'prepared', 'shipped', 'delivered', 'completed'].includes(status)) {
       return NextResponse.json(
         { message: 'Invalid status provided' },
         { status: 400 }
@@ -63,18 +63,18 @@ export async function PATCH(request, { params }) {
       );
     }
     
-    // Only the responder or an admin can update the status
+    // Only the user who accepted the request or an admin can update the status
     if (user.role !== 'admin' && 
-        (!aidRequest.respondedBy || aidRequest.respondedBy.toString() !== user._id.toString())) {
+        (!aidRequest.acceptedBy || aidRequest.acceptedBy.toString() !== user._id.toString())) {
       return NextResponse.json(
-        { message: 'You can only update aid requests that you have approved' },
+        { message: 'You can only update aid requests that you have accepted' },
         { status: 403 }
       );
     }
     
     // Check if the aid request is in an appropriate state to be updated
-    if (aidRequest.status !== 'approved' && 
-        !['received', 'prepared', 'shipped'].includes(aidRequest.status)) {
+    // Allow any non-denied, non-completed status to be updated to any valid status
+    if (aidRequest.status === 'denied' || aidRequest.status === 'completed') {
       return NextResponse.json(
         { message: `Cannot update from status '${aidRequest.status}' to '${status}'` },
         { status: 400 }
