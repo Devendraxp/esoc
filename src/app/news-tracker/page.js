@@ -179,7 +179,7 @@ export default function NewsTracker() {
                         }}
                       />
                       <div>
-                        <h3 className="text-lg font-medium text-purple-400">{getModelDisplayName()} Response</h3>
+                        <h3 className="text-lg font-medium text-purple-400"> Eko AI Response</h3>
                         <p className="text-xs text-zinc-500">For: {location} {query ? `- "${query}"` : ''}</p>
                       </div>
                     </div>

@@ -16,6 +16,7 @@ const Sidebar = ({ userRole = 'normal' }) => {
     { name: 'Create Post', href: '/create-post' },
     { name: 'Ask for help', href: '/apply-aid' },
     { name: 'Eko News', href: '/news-tracker' }, // Added News Tracker link
+    { name: 'Urgent Notifications', href: '/urgent-notifications' }, // Added Urgent Notifications link
   ];
   
   // Admin & Special user links - conditionally displayed

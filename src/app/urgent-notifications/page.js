@@ -2,21 +2,21 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useSWR from 'swr';
-import Container from '../components/Container';
-import Sidebar from '../components/Sidebar';
-import Card from '../components/Card';
-import ThemeToggle from '../components/ThemeToggle';
-import PostCard from '../components/PostCard';
+import Container from '../../components/Container';
+import Sidebar from '../../components/Sidebar';
+import Card from '../../components/Card';
+import ThemeToggle from '../../components/ThemeToggle';
+import PostCard from '../../components/PostCard';
 
 // Fetcher function for SWR
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
-export default function Home() {
+export default function UrgentNotifications() {
   // State for user role
   const [userRole, setUserRole] = useState('normal');
   
-  // State for posts and pagination
-  const [allPosts, setAllPosts] = useState([]);
+  // State for admin posts and pagination
+  const [adminPosts, setAdminPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -39,13 +39,22 @@ export default function Home() {
     fetchUserRole();
   }, []);
 
-  // Fetch initial posts using SWR
-  const { data, error, isLoading, mutate } = useSWR(`/api/posts?page=1&limit=10`, fetcher);
+  // Fetch posts with SWR, using larger limit since we're filtering
+  const { data, error, isLoading, mutate } = useSWR(`/api/posts?page=1&limit=50`, fetcher);
 
-  // Update posts when data changes
+  // Filter and update admin posts when data changes
   useEffect(() => {
     if (data && data.posts) {
-      setAllPosts(Array.isArray(data.posts) ? data.posts : []);
+      // Filter posts to only include those created by admin users
+      const filteredPosts = Array.isArray(data.posts) 
+        ? data.posts.filter(post => 
+            post.author && 
+            (post.author.role === 'admin' || 
+             (typeof post.author === 'object' && post.author.role === 'admin'))
+          )
+        : [];
+      
+      setAdminPosts(filteredPosts);
       setHasMore(data.pagination?.hasMore || false);
     }
   }, [data]);
@@ -88,12 +97,20 @@ export default function Home() {
     const nextPage = page + 1;
     
     try {
-      const response = await fetch(`/api/posts?page=${nextPage}&limit=10`);
+      const response = await fetch(`/api/posts?page=${nextPage}&limit=50`);
       const newData = await response.json();
       
       if (newData && newData.posts) {
-        const newPosts = Array.isArray(newData.posts) ? newData.posts : [];
-        setAllPosts(prevPosts => [...prevPosts, ...newPosts]);
+        // Filter new posts for admin posts
+        const newAdminPosts = Array.isArray(newData.posts) 
+          ? newData.posts.filter(post => 
+              post.author && 
+              (post.author.role === 'admin' || 
+               (typeof post.author === 'object' && post.author.role === 'admin'))
+            )
+          : [];
+          
+        setAdminPosts(prevPosts => [...prevPosts, ...newAdminPosts]);
         setPage(nextPage);
         setHasMore(newData.pagination?.hasMore || false);
       }
@@ -117,15 +134,18 @@ export default function Home() {
       {/* Main content */}
       <div className="flex-1 ml-64">
         <header className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800 p-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-[#ededed] text-center flex-1">Home</h1>
+          <h1 className="text-2xl font-bold text-[#ededed] text-center flex-1">Urgent Notifications</h1>
           <ThemeToggle />
         </header>
 
         <main className="p-8">
           <Container className="py-6">
-            <h2 className="text-xl font-semibold mb-8 text-[#ededed]">Recent Posts</h2>
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-2 text-[#ededed]">Admin Announcements</h2>
+              <p className="text-zinc-400">Important announcements and updates from administrators</p>
+            </div>
             
-            {isLoading && !allPosts.length && (
+            {isLoading && !adminPosts.length && (
               <div className="flex justify-center items-center h-40">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
               </div>
@@ -133,18 +153,18 @@ export default function Home() {
 
             {error && (
               <Card className="bg-red-900/20 text-red-300 border border-red-800 mb-6">
-                <p>Error loading posts. Please try again.</p>
+                <p>Error loading announcements. Please try again.</p>
               </Card>
             )}
 
-            {allPosts && allPosts.length === 0 && !isLoading && (
+            {adminPosts && adminPosts.length === 0 && !isLoading && (
               <Card className="bg-blue-900/20 text-blue-300 mb-6">
-                <p>No posts available. Be the first to post!</p>
+                <p>No admin announcements available at this time.</p>
               </Card>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {Array.isArray(allPosts) && allPosts.map((post) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {Array.isArray(adminPosts) && adminPosts.map((post) => (
                 <PostCard 
                   key={post._id} 
                   post={post}
@@ -163,9 +183,9 @@ export default function Home() {
             )}
             
             {/* End of posts message */}
-            {!hasMore && allPosts.length > 0 && (
+            {!hasMore && adminPosts.length > 0 && (
               <div className="text-center text-zinc-500 py-8">
-                <p>You've reached the end of the posts</p>
+                <p>You've seen all admin announcements</p>
               </div>
             )}
           </Container>
