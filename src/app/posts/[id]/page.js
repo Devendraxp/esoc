@@ -14,6 +14,7 @@ import Card from '../../../components/Card';
 import Input from '../../../components/Input';
 import ThemeToggle from '../../../components/ThemeToggle';
 import ImageSlider from '../../../components/ImageSlider';
+import ReportPostModal from '../../../components/reports/ReportPostModal';
 
 // Fetcher function for SWR
 const fetcher = (url) => fetch(url).then((res) => res.json());
@@ -31,6 +32,7 @@ export default function PostDetail({ params }) {
   const [authorDetails, setAuthorDetails] = useState(null);
   const [inputError, setInputError] = useState(false);
   const [userRole, setUserRole] = useState(null); // Add userRole state
+  const [showReportModal, setShowReportModal] = useState(false);
   
   // For optimistic UI updates
   const [optimisticPost, setOptimisticPost] = useState(null);
@@ -180,30 +182,19 @@ export default function PostDetail({ params }) {
   };
 
   // Handle report post
-  const handleReport = async () => {
+  const handleReport = () => {
     if (!isSignedIn) {
       alert('Please sign in to report posts');
       return;
     }
     
-    try {
-      // Show a simple browser prompt to get the reason
-      const reason = prompt('Why are you reporting this post?', 'fake');
-      
-      if (!reason) return;
-      
-      await fetch(`/api/posts/${id}/report`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reason }),
-      });
-      
-      alert('Post reported successfully');
-    } catch (error) {
-      console.error('Error reporting post:', error);
-    }
+    // Open the report modal instead of showing a browser prompt
+    setShowReportModal(true);
+  };
+  
+  // Handle closing report modal
+  const closeReportModal = () => {
+    setShowReportModal(false);
   };
 
   // Handle submit comment
@@ -656,6 +647,14 @@ export default function PostDetail({ params }) {
               </div>
             </div>
           </Container>
+          
+          {/* Report post modal */}
+          <ReportPostModal 
+            isOpen={showReportModal}
+            onClose={closeReportModal}
+            postId={id}
+            postContent={post?.content || ''}
+          />
         </main>
       </div>
     </div>

@@ -45,8 +45,8 @@ export default function Home() {
   // Update posts when data changes
   useEffect(() => {
     if (data && data.posts) {
-      setAllPosts(data.posts);
-      setHasMore(data.pagination.hasMore);
+      setAllPosts(Array.isArray(data.posts) ? data.posts : []);
+      setHasMore(data.pagination?.hasMore || false);
     }
   }, [data]);
 
@@ -92,9 +92,10 @@ export default function Home() {
       const newData = await response.json();
       
       if (newData && newData.posts) {
-        setAllPosts(prevPosts => [...prevPosts, ...newData.posts]);
+        const newPosts = Array.isArray(newData.posts) ? newData.posts : [];
+        setAllPosts(prevPosts => [...prevPosts, ...newPosts]);
         setPage(nextPage);
-        setHasMore(newData.pagination.hasMore);
+        setHasMore(newData.pagination?.hasMore || false);
       }
     } catch (error) {
       console.error('Error loading more posts:', error);
@@ -143,7 +144,7 @@ export default function Home() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {allPosts.map((post) => (
+              {Array.isArray(allPosts) && allPosts.map((post) => (
                 <PostCard 
                   key={post._id} 
                   post={post}

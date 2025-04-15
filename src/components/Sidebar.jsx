@@ -14,8 +14,8 @@ const Sidebar = ({ userRole = 'normal' }) => {
   const navItems = [
     { name: 'Home', href: '/' },
     { name: 'Create Post', href: '/create-post' },
-    { name: 'Apply for Aid', href: '/apply-aid' },
-    { name: 'News Tracker', href: '/news-tracker' }, // Added News Tracker link
+    { name: 'Ask for help', href: '/apply-aid' },
+    { name: 'Eko News', href: '/news-tracker' }, // Added News Tracker link
   ];
   
   // Admin & Special user links - conditionally displayed
@@ -105,8 +105,7 @@ const Sidebar = ({ userRole = 'normal' }) => {
           </div>
         )}
         
-        <h2 className="text-xl font-bold text-[#ededed]">ESOC App</h2>
-      </div>
+        </div>
       
       <nav className="space-y-4 px-4">
         <Card className="p-0 overflow-hidden">
@@ -128,6 +127,18 @@ const Sidebar = ({ userRole = 'normal' }) => {
           </ul>
         </Card>
       </nav>
+
+      {/* Logo at the bottom of sidebar */}
+      <div className="absolute bottom-6 w-full flex justify-center">
+        <div className="relative h-40 w-60">
+          <Image
+            src="/logo.png"
+            alt="Logo"
+            fill
+            className="object-contain"
+          />
+        </div>
+      </div>
     </div>
   );
 };

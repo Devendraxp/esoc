@@ -113,8 +113,57 @@ export default function AdminDashboard() {
     fetcher
   );
   
-  // Fetch all reports
-  const { data: reports, error: reportsError, isLoading: reportsLoading } = useSWR(
+  // Handle report actions
+  const handleAgreeWithReport = async (reportId) => {
+    try {
+      const response = await fetch('/api/reports/handle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId,
+          action: 'agree'
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Error handling report:', await response.text());
+      }
+      
+      // Refresh reports after action
+      mutateReports();
+    } catch (error) {
+      console.error('Error handling report:', error);
+    }
+  };
+  
+  const handleDisagreeWithReport = async (reportId) => {
+    try {
+      const response = await fetch('/api/reports/handle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId,
+          action: 'disagree'
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Error handling report:', await response.text());
+      }
+      
+      // Refresh reports after action
+      mutateReports();
+    } catch (error) {
+      console.error('Error handling report:', error);
+    }
+  };
+
+  // Fetch all reports without region filtering
+  const { data: reports, error: reportsError, isLoading: reportsLoading, mutate: mutateReports } = useSWR(
     '/api/reports/all',
     fetcher
   );
@@ -786,21 +835,21 @@ export default function AdminDashboard() {
                       <div className="space-y-8">
                         {reports.map((report) => (
                           <Card key={report._id} className={`border ${
-                            report.status === 'resolved' 
+                            report.status === 'agreed' || report.status === 'disagreed'
                               ? 'border-green-800' 
-                              : 'border-zinc-800'
+                              : 'border-yellow-800'
                           }`}>
                             <div className="flex flex-col">
-                              <div className="flex justify-between items-start mb-6">
+                              <div className="flex justify-between items-start">
                                 <div>
                                   <div className="flex items-center mb-3">
                                     <div className={`${
-                                      report.status === 'resolved'
+                                      report.status === 'agreed' || report.status === 'disagreed'
                                         ? 'bg-green-900/30 text-green-300'
-                                        : 'bg-zinc-800 text-yellow-300'
+                                        : 'bg-yellow-900/30 text-yellow-300'
                                     } rounded-full p-1 mr-2`}>
                                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                        {report.status === 'resolved' ? (
+                                        {report.status === 'agreed' || report.status === 'disagreed' ? (
                                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                         ) : (
                                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -811,9 +860,11 @@ export default function AdminDashboard() {
                                       Report ID: {report._id}
                                     </span>
                                     <span className={`ml-3 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                      report.status === 'resolved'
+                                      report.status === 'agreed'
                                         ? 'bg-green-900/30 text-green-300'
-                                        : 'bg-zinc-800 text-yellow-300'
+                                        : report.status === 'disagreed'
+                                        ? 'bg-red-900/30 text-red-300'
+                                        : 'bg-yellow-900/30 text-yellow-300'
                                     }`}>
                                       {report.status || 'pending'}
                                     </span>
@@ -828,24 +879,24 @@ export default function AdminDashboard() {
                                     }
                                   </p>
                                   <p className="text-sm text-zinc-400 mt-2">
-                                    <span className="font-medium">Reason:</span> {report.reason}
+                                    <span className="font-medium">Reason:</span> {report.content}
                                   </p>
                                 </div>
                                 
-                                {report.status === 'resolved' && report.resolvedBy && (
+                                {report.handledBy && (
                                   <div className="text-sm text-zinc-400">
-                                    <span className="font-medium">Resolved by:</span> {
-                                      typeof report.resolvedBy === 'object'
-                                        ? (report.resolvedBy?.firstName 
-                                           ? `${report.resolvedBy.firstName} ${report.resolvedBy.lastName || ''}`.trim()
-                                           : report.resolvedBy?.username || report.resolvedBy?.clerkId || 'Unknown')
-                                        : report.resolvedBy
+                                    <span className="font-medium">Handled by:</span> {
+                                      typeof report.handledBy === 'object'
+                                        ? (report.handledBy?.firstName 
+                                           ? `${report.handledBy.firstName} ${report.handledBy.lastName || ''}`.trim()
+                                           : report.handledBy?.username || report.handledBy?.clerkId || 'Unknown')
+                                        : report.handledBy
                                     }
                                   </div>
                                 )}
                               </div>
                               
-                              <div className="bg-zinc-800 rounded-lg p-6 mb-6">
+                              <div className="bg-zinc-800 rounded-lg p-6 my-6">
                                 <p className="text-[#ededed]">{report.post?.content}</p>
                                 <div className="flex justify-between items-center mt-3">
                                   <p className="text-xs text-zinc-400">
@@ -855,10 +906,6 @@ export default function AdminDashboard() {
                                            ? `${report.post.author.firstName} ${report.post.author.lastName || ''}`.trim()
                                            : report.post.author?.username || report.post.author?.clerkId || 'Anonymous')
                                         : (report.post?.author || 'Anonymous')
-                                    } in {
-                                      typeof report.post?.author === 'object'
-                                        ? report.post.author?.profile_location || 'Unknown Region'
-                                        : 'Unknown Region'
                                     }
                                   </p>
                                   {report.post?.fakeScore > 0 && (
@@ -869,9 +916,21 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                               
-                              {report.actions && report.actions.length > 0 && (
-                                <div className="text-sm text-zinc-400 mb-2">
-                                  <span className="font-medium">Actions taken:</span> {report.actions.join(', ')}
+                              {report.status === 'pending' && (
+                                <div className="flex justify-end space-x-3">
+                                  <Button 
+                                    variant="secondary"
+                                    className="bg-green-900/30 text-green-300 hover:bg-green-900/50"
+                                    onClick={() => handleDisagreeWithReport(report._id)}
+                                  >
+                                    Dismiss Report
+                                  </Button>
+                                  <Button 
+                                    className="bg-red-900/50 hover:bg-red-900/70 text-[#ededed]"
+                                    onClick={() => handleAgreeWithReport(report._id)}
+                                  >
+                                    Agree & Delete
+                                  </Button>
                                 </div>
                               )}
                             </div>

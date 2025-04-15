@@ -11,6 +11,15 @@ const inter = Inter({
 export const metadata = {
   title: "ESOC App",
   description: "Emergency Social Coordination Application",
+  icons: {
+    icon: [
+      { url: './Eko.png', sizes: 'any' },
+      { url: '/Eko.png', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/Eko.png' }
+    ],
+  },
 };
 
 export default function RootLayout({ children }) {

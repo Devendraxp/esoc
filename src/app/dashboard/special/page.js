@@ -19,7 +19,6 @@ export default function SpecialDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('aid');
   const [userRole, setUserRole] = useState(null);
-  const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedRequest, setSelectedRequest] = useState(null); // For the popup modal
   
   // Fetch user role
@@ -61,9 +60,9 @@ export default function SpecialDashboard() {
     fetcher
   );
   
-  // Fetch reported posts filtered by region if selected
+  // Fetch reported posts without region filtering 
   const { data: reportedPosts, error: reportsError, isLoading: reportsLoading, mutate: refreshReports } = useSWR(
-    `/api/reports/all${selectedRegion ? `?region=${encodeURIComponent(selectedRegion)}` : ''}`,
+    `/api/reports/all`,
     fetcher
   );
   
@@ -177,6 +176,53 @@ export default function SpecialDashboard() {
       refreshReports();
     } catch (error) {
       console.error('Error removing post:', error);
+    }
+  };
+
+  // Handle report actions with proper API calls
+  const handleAgreeWithReport = async (reportId) => {
+    try {
+      const response = await fetch('/api/reports/handle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId,
+          action: 'agree'
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Error handling report:', await response.text());
+      }
+      
+      refreshReports();
+    } catch (error) {
+      console.error('Error handling report:', error);
+    }
+  };
+  
+  const handleDisagreeWithReport = async (reportId) => {
+    try {
+      const response = await fetch('/api/reports/handle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportId,
+          action: 'disagree'
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Error handling report:', await response.text());
+      }
+      
+      refreshReports();
+    } catch (error) {
+      console.error('Error handling report:', error);
     }
   };
   
@@ -443,23 +489,6 @@ export default function SpecialDashboard() {
                   <div>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-semibold text-[#ededed]">Reported Posts</h2>
-                      
-                      {/* Region Filter */}
-                      <div className="flex items-center">
-                        <span className="text-sm text-[#ededed] mr-3">Filter by region:</span>
-                        <select
-                          value={selectedRegion}
-                          onChange={(e) => setSelectedRegion(e.target.value)}
-                          className="bg-zinc-800 border border-zinc-700 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-[#ededed]"
-                        >
-                          <option value="">All Regions</option>
-                          <option value="Region 1">Region 1</option>
-                          <option value="Region 2">Region 2</option>
-                          <option value="Region 3">Region 3</option>
-                          <option value="Eastern District">Eastern District</option>
-                          <option value="Western District">Western District</option>
-                        </select>
-                      </div>
                     </div>
                     
                     {reportsLoading ? (
@@ -470,13 +499,13 @@ export default function SpecialDashboard() {
                       <Card className="bg-red-900/20 text-red-300 border border-red-800 mb-6">
                         <p>Error loading reported posts. Please try again.</p>
                       </Card>
-                    ) : reportedPosts?.length === 0 ? (
+                    ) : !reportedPosts || reportedPosts.length === 0 ? (
                       <Card className="bg-zinc-900 text-[#ededed] mb-6">
                         <p>No reported posts at this time.</p>
                       </Card>
                     ) : (
                       <div className="space-y-8">
-                        {reportedPosts?.map((report) => (
+                        {reportedPosts.map((report) => (
                           <Card key={report._id} className="border border-yellow-800">
                             <div className="flex justify-between">
                               <div className="flex space-x-4 items-start">
@@ -493,7 +522,7 @@ export default function SpecialDashboard() {
                                            ? `${report.reporter.firstName} ${report.reporter.lastName || ''}`.trim() 
                                            : report.reporter?.username || report.reporter?.clerkId || 'Anonymous')
                                         : (report.reporter || 'Anonymous')
-                                    } • {report.reason}
+                                    } • {report.content}
                                   </p>
                                   <p className="text-sm text-zinc-400 mb-6">
                                     Reported on {format(new Date(report.createdAt), 'MMM d, yyyy')}
@@ -508,10 +537,6 @@ export default function SpecialDashboard() {
                                              ? `${report.post.author.firstName} ${report.post.author.lastName || ''}`.trim()
                                              : report.post.author?.username || report.post.author?.clerkId || 'Anonymous')
                                           : (report.post?.author || 'Anonymous')
-                                      } in {
-                                        typeof report.post?.author === 'object'
-                                          ? report.post.author?.profile_location || 'Unknown Region'
-                                          : 'Unknown Region'
                                       }
                                     </p>
                                   </div>
@@ -528,15 +553,15 @@ export default function SpecialDashboard() {
                                 <Button 
                                   variant="secondary"
                                   className="bg-green-900/30 text-green-300 hover:bg-green-900/50"
-                                  onClick={() => handleMarkSafe(report._id)}
+                                  onClick={() => handleDisagreeWithReport(report._id)}
                                 >
-                                  Mark Safe
+                                  Dismiss Report
                                 </Button>
                                 <Button 
                                   className="bg-red-900/50 hover:bg-red-900/70 text-[#ededed]"
-                                  onClick={() => handleRemovePost(report.post?._id)}
+                                  onClick={() => handleAgreeWithReport(report._id)}
                                 >
-                                  Remove Post
+                                  Agree & Delete
                                 </Button>
                               </div>
                             </div>

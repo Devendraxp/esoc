@@ -148,10 +148,13 @@ export default function ProfilePage() {
       const response = await fetch(`/api/posts?user=${user.id}`);
       if (response.ok) {
         const data = await response.json();
-        setUserPosts(data);
+        // Ensure userPosts is always an array
+        setUserPosts(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error('Error fetching user posts:', error);
+      // Set to empty array on error
+      setUserPosts([]);
     } finally {
       setIsLoadingPosts(false);
     }
