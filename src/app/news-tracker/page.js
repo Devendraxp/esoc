@@ -19,6 +19,9 @@ export default function NewsTracker() {
   const [mounted, setMounted] = useState(false);
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
@@ -40,6 +43,9 @@ export default function NewsTracker() {
   const cardBorderClass = theme === 'dark' ? 'border-zinc-700' : 'border-zinc-300';
   const cardBgClass = theme === 'dark' ? 'bg-zinc-900' : 'bg-white';
   const dividerClass = theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200';
+  const inputBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-white';
+  const inputBorderClass = theme === 'dark' ? 'border-zinc-700' : 'border-zinc-300';
+  const buttonHoverClass = theme === 'dark' ? 'hover:bg-zinc-700' : 'hover:bg-gray-200';
   
   // Check if we're in a mobile view on component mount and window resize
   useEffect(() => {
@@ -54,6 +60,52 @@ export default function NewsTracker() {
     window.addEventListener('resize', checkIfMobile);
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
+  
+  // Handle location input and fetch suggestions from API
+  const handleLocationChange = (e) => {
+    const inputValue = e.target.value;
+    setLocation(inputValue);
+    
+    if (inputValue.length > 1) {
+      // Fetch location suggestions
+      setIsLoadingSuggestions(true);
+      fetchLocationSuggestions(inputValue);
+    } else {
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+  
+  // Fetch location suggestions from API
+  const fetchLocationSuggestions = async (query) => {
+    if (!query || query.length < 2) return;
+    
+    try {
+      const response = await fetch(`/api/location-suggestions?query=${encodeURIComponent(query)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLocationSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      } else {
+        console.error('Failed to fetch location suggestions');
+        setLocationSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching location suggestions:', error);
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+  
+  // Select a suggestion
+  const selectSuggestion = (suggestion) => {
+    setLocation(suggestion);
+    setShowSuggestions(false);
+  };
   
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -121,7 +173,7 @@ export default function NewsTracker() {
       
       <div className="flex-1 md:ml-64 w-full">
         <header className={`sticky top-0 z-10 ${headerBgClass} border-b ${headerBorderClass} p-4 md:p-8 flex justify-between items-center`}>
-          <h1 className={`text-xl md:text-2xl font-bold ${textClass} pl-8 md:pl-0`}>News Tracker</h1>
+          <h1 className={`text-xl md:text-2xl font-bold ${textClass} pl-14 md:pl-0`}>Eko AI News</h1>
           <ThemeToggle />
         </header>
         
@@ -138,17 +190,40 @@ export default function NewsTracker() {
                 <label htmlFor="location" className={`block text-sm font-medium mb-2 ${textClass}`}>
                   Location <span className="text-red-400">*</span>
                 </label>
-                <Input
-                  id="location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g., New York"
-                  className="w-full"
-                  required
-                />
-                <p className={`text-xs ${tertiaryTextClass} mt-1`}>
-                  Required: Enter a city, country or specific location
-                </p>
+                <div className="relative">
+                  <Input
+                    id="location"
+                    value={location}
+                    onChange={handleLocationChange}
+                    placeholder="e.g., New York"
+                    className="w-full"
+                    required
+                  />
+                  {showSuggestions && (
+                    <ul className={`absolute z-10 mt-1 w-full ${inputBgClass} border ${inputBorderClass} rounded-lg ${textClass} max-h-60 overflow-auto`}>
+                      {locationSuggestions.map((suggestion, index) => (
+                        <li 
+                          key={index} 
+                          className={`p-2 ${buttonHoverClass} cursor-pointer`}
+                          onClick={() => selectSuggestion(suggestion)}
+                        >
+                          {suggestion}
+                        </li>
+                      ))}
+                      {isLoadingSuggestions && (
+                        <li className="p-2 text-center">
+                          <div className={`animate-spin inline-block h-4 w-4 border-t-2 border-current rounded-full`}></div>
+                        </li>
+                      )}
+                      {!isLoadingSuggestions && locationSuggestions.length === 0 && (
+                        <li className={`p-2 ${tertiaryTextClass}`}>No suggestions found</li>
+                      )}
+                    </ul>
+                  )}
+                  <p className={`text-xs ${tertiaryTextClass} mt-1`}>
+                    Required: Enter a city, country or specific location
+                  </p>
+                </div>
               </div>
               
               <div>
