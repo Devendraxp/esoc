@@ -8,6 +8,21 @@ export default function CommentList({ postId, initialComments = [] }) {
   const [comments, setComments] = useState(initialComments);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+  
+  // Check mobile view on mount and window resize
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobileView(window.innerWidth < 640);
+    };
+    
+    // Check on mount
+    checkIfMobile();
+    
+    // Check on resize
+    window.addEventListener('resize', checkIfMobile);
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
   
   useEffect(() => {
     // Update comments when initialComments changes
@@ -47,22 +62,22 @@ export default function CommentList({ postId, initialComments = [] }) {
   // If there are no comments and we're not loading, show a message
   if (comments.length === 0 && !isLoading) {
     return (
-      <div className="py-4 text-center text-zinc-500">
+      <div className="py-3 sm:py-4 text-center text-zinc-500 text-xs sm:text-sm">
         No comments yet. Be the first to reply!
       </div>
     );
   }
   
   return (
-    <div className="mt-4">
+    <div className="mt-2 sm:mt-4">
       {isLoading && (
-        <div className="py-4 text-center">
-          <div className="h-6 w-6 rounded-full border-2 border-t-transparent border-blue-600 animate-spin mx-auto"></div>
+        <div className="py-3 sm:py-4 text-center">
+          <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full border-2 border-t-transparent border-blue-600 animate-spin mx-auto"></div>
         </div>
       )}
       
       {error && (
-        <div className="py-4 text-center text-red-500">
+        <div className="py-2 sm:py-4 text-center text-red-500 text-xs sm:text-sm">
           {error}
           <button 
             onClick={fetchComments}
@@ -73,14 +88,16 @@ export default function CommentList({ postId, initialComments = [] }) {
         </div>
       )}
       
-      {comments.map(comment => (
-        <CommentItem 
-          key={comment._id} 
-          comment={comment} 
-          postId={postId}
-          onCommentDeleted={handleCommentDeleted}
-        />
-      ))}
+      <div className={`space-y-1 sm:space-y-0 ${isMobileView ? 'divide-y divide-zinc-800/50' : ''}`}>
+        {comments.map(comment => (
+          <CommentItem 
+            key={comment._id} 
+            comment={comment} 
+            postId={postId}
+            onCommentDeleted={handleCommentDeleted}
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from '@clerk/nextjs';
-import Container from '../../components/Container';
+import { useTheme } from 'next-themes';
 import Sidebar from '../../components/Sidebar';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
@@ -14,9 +14,29 @@ export default function CreatePost() {
   const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser();
   const userId = isLoaded && isSignedIn ? user.id : null;
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  
+  // Fix for hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // State for user role
   const [userRole, setUserRole] = useState('normal');
+  
+  // Theme-aware style classes
+  const bgClass = theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50';
+  const textClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-800';
+  const secondaryTextClass = theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600';
+  const tertiaryTextClass = theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500';
+  const headerBgClass = theme === 'dark' ? 'bg-zinc-900' : 'bg-white';
+  const headerBorderClass = theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200';
+  const inputBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-white';
+  const inputBorderClass = theme === 'dark' ? 'border-zinc-700' : 'border-zinc-300';
+  const previewBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100';
+  const placeholderBgClass = theme === 'dark' ? 'bg-zinc-700' : 'bg-gray-200';
+  const buttonHoverClass = theme === 'dark' ? 'hover:bg-zinc-700' : 'hover:bg-gray-200';
   
   // State for location suggestions
   const [location, setLocation] = useState('');
@@ -207,12 +227,12 @@ export default function CreatePost() {
   // Render file previews
   const renderPreviews = () => {
     return previewUrls.map((item, index) => (
-      <div key={index} className="relative mb-4 p-2 bg-zinc-800 rounded-lg">
+      <div key={index} className={`relative mb-4 p-2 ${previewBgClass} rounded-lg`}>
         <div className="flex items-center">
           {item.type === 'image' ? (
             <img src={item.url} alt={item.name} className="w-16 h-16 object-cover rounded mr-2" />
           ) : (
-            <div className="w-16 h-16 flex items-center justify-center bg-zinc-700 rounded mr-2">
+            <div className={`w-16 h-16 flex items-center justify-center ${placeholderBgClass} rounded mr-2`}>
               {item.type === 'video' ? '🎬' : item.type === 'audio' ? '🔊' : '📄'}
             </div>
           )}
@@ -229,125 +249,141 @@ export default function CreatePost() {
     ));
   };
   
+  if (!mounted) {
+    return null; // Prevent hydration issues
+  }
+  
   return (
-    <Container noPadding={true} fullWidth={true} className="p-0 overflow-hidden rounded-none border-0">
-      <div className="flex">
-        <Sidebar userRole={userRole} />
-        
-        <main className="flex-1 pl-64 py-8 pr-4 sm:pr-6 lg:pr-8">
-          <SignedIn>
-            <div className="mb-6 flex justify-between items-center px-4 sm:px-6 lg:px-8">
-              <h1 className="text-2xl font-semibold text-[#ededed]">Create Post</h1>
-              <ThemeToggle />
-            </div>
-            
-            <Card className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-              {error && (
-                <div className="mb-4 p-3 bg-red-900/20 border border-red-900 rounded-lg text-red-400">
-                  {error}
-                </div>
-              )}
-              
-              <form onSubmit={handleSubmit}>
-                <div className="mb-6">
-                  <label htmlFor="content" className="block mb-2 text-sm font-medium text-[#ededed]">
-                    Post Content
-                  </label>
-                  <textarea
-                    id="content"
-                    rows="6"
-                    className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-[#ededed] focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Share information, updates, or resources..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="mb-6">
-                  <label htmlFor="location" className="block mb-2 text-sm font-medium text-[#ededed]">
-                    Location (Optional)
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="location"
-                      type="text"
-                      className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-[#ededed] focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter a location..."
-                      value={location}
-                      onChange={handleLocationChange}
-                    />
-                    {showSuggestions && (
-                      <ul className="absolute z-10 mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-lg text-[#ededed]">
-                        {locationSuggestions.map((suggestion, index) => (
-                          <li 
-                            key={index} 
-                            className="p-2 hover:bg-zinc-700 cursor-pointer"
-                            onClick={() => selectSuggestion(suggestion)}
-                          >
-                            {suggestion}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+    <div className={`flex min-h-screen ${bgClass} ${textClass}`}>
+      <Sidebar userRole={userRole} />
+      
+      {/* Main content */}
+      <div className="flex-1 md:ml-64 w-full">
+        <header className={`sticky top-0 z-10 ${headerBgClass} border-b ${headerBorderClass} p-4 flex justify-between items-center`}>
+          <h1 className={`text-xl md:text-2xl font-bold ${textClass} text-center flex-1 pl-8 md:pl-0`}>Create Post</h1>
+          <ThemeToggle />
+        </header>
+
+        <main className="p-4 md:p-8 pb-20 md:pb-8">
+          <div className="py-6">
+            <Card className="max-w-2xl mx-auto">
+              <SignedIn>
+                {error && (
+                  <div className="mb-4 p-3 bg-red-900/20 border border-red-900 rounded-lg text-red-400">
+                    {error}
                   </div>
-                </div>
+                )}
                 
-                <div className="mb-6">
-                  <label className="block mb-2 text-sm font-medium text-[#ededed]">
-                    Add Media (Optional)
-                  </label>
-                  <div className="flex items-center">
-                    <label className="flex items-center px-4 py-2 bg-zinc-700 text-[#ededed] rounded-lg cursor-pointer hover:bg-zinc-600 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      Add Files
-                      <input 
-                        type="file" 
-                        multiple 
-                        onChange={handleFileChange} 
-                        className="hidden" 
-                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
-                      />
+                <form onSubmit={handleSubmit}>
+                  <div className="mb-6">
+                    <label htmlFor="content" className={`block mb-2 text-sm font-medium ${textClass}`}>
+                      Post Content
                     </label>
-                    <span className="ml-4 text-sm text-[#a1a1aa]">
-                      {mediaFiles.length} file{mediaFiles.length !== 1 ? 's' : ''} selected
-                    </span>
+                    <textarea
+                      id="content"
+                      rows="6"
+                      className={`w-full p-3 ${inputBgClass} border ${inputBorderClass} rounded-lg ${textClass} focus:ring-blue-500 focus:border-blue-500`}
+                      placeholder="Share information, updates, or resources..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      required
+                    />
                   </div>
                   
-                  <div className="mt-4">
-                    {renderPreviews()}
+                  <div className="mb-6">
+                    <label htmlFor="location" className={`block mb-2 text-sm font-medium ${textClass}`}>
+                      Location (Optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="location"
+                        type="text"
+                        className={`w-full p-3 ${inputBgClass} border ${inputBorderClass} rounded-lg ${textClass} focus:ring-blue-500 focus:border-blue-500`}
+                        placeholder="Enter a location..."
+                        value={location}
+                        onChange={handleLocationChange}
+                      />
+                      {showSuggestions && (
+                        <ul className={`absolute z-10 mt-1 w-full ${inputBgClass} border ${inputBorderClass} rounded-lg ${textClass}`}>
+                          {locationSuggestions.map((suggestion, index) => (
+                            <li 
+                              key={index} 
+                              className={`p-2 ${buttonHoverClass} cursor-pointer`}
+                              onClick={() => selectSuggestion(suggestion)}
+                            >
+                              {suggestion}
+                            </li>
+                          ))}
+                          {isLoadingSuggestions && (
+                            <li className="p-2 text-center">
+                              <div className={`animate-spin inline-block h-4 w-4 border-t-2 border-current rounded-full`}></div>
+                            </li>
+                          )}
+                          {!isLoadingSuggestions && locationSuggestions.length === 0 && (
+                            <li className={`p-2 ${tertiaryTextClass}`}>No suggestions found</li>
+                          )}
+                        </ul>
+                      )}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button 
-                    type="submit" 
-                    disabled={isSubmitting} 
-                    className={`px-6 py-2 border rounded-md transition ${
-                      isSubmitting 
-                        ? 'bg-blue-900/30 text-blue-300 border-blue-700' 
-                        : 'bg-green-900/20 text-green-400 border-green-700 hover:bg-green-800/30'
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center">
-                        <div className="h-4 w-4 mr-2 rounded-full border-2 border-t-transparent border-blue-300 animate-spin"></div>
-                        Posting...
+                  
+                  <div className="mb-6">
+                    <label className={`block mb-2 text-sm font-medium ${textClass}`}>
+                      Add Media (Optional)
+                    </label>
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById('file-upload').click()}
+                        className={`flex items-center justify-center p-3 ${inputBgClass} border ${inputBorderClass} rounded-lg ${buttonHoverClass} transition-colors duration-200`}
+                      >
+                        <span className={`${textClass} mr-2`}>Add Files</span>
+                      </button>
+                      <span className={`ml-4 text-sm ${secondaryTextClass}`}>{mediaFiles.length} file(s) selected</span>
+                    </div>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+                    />
+                    {/* Preview of selected files */}
+                    {mediaFiles.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className={`text-sm font-medium ${secondaryTextClass} mb-2`}>Selected Files:</h4>
+                        <div className="space-y-2">{renderPreviews()}</div>
                       </div>
-                    ) : 'Post'}
-                  </Button>
-                </div>
-              </form>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      color="primary"
+                      disabled={isSubmitting}
+                      className="px-6 py-2 bg-green-600 hover:bg-green-500"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="mr-2 animate-spin h-4 w-4 border-t-2 border-white rounded-full"></div>
+                          Posting...
+                        </>
+                      ) : (
+                        'Post'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </SignedIn>
+              <SignedOut>
+                <RedirectToSignIn />
+              </SignedOut>
             </Card>
-          </SignedIn>
-          
-          <SignedOut>
-            <RedirectToSignIn />
-          </SignedOut>
+          </div>
         </main>
       </div>
-    </Container>
+    </div>
   );
 }

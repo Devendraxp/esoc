@@ -6,8 +6,8 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import useSWR, { mutate } from 'swr';
 import { useUser } from '@clerk/nextjs';
+import { useTheme } from 'next-themes';
 
-import Container from '../../../components/Container';
 import Sidebar from '../../../components/Sidebar';
 import Button from '../../../components/Button';
 import Card from '../../../components/Card';
@@ -25,6 +25,13 @@ export default function PostDetail({ params }) {
   const unwrappedParams = React.use(params);
   const id = unwrappedParams.id;
   const { isSignedIn, user } = useUser();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  
+  // Fix for hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // State for new comment
   const [commentText, setCommentText] = useState('');
@@ -36,6 +43,16 @@ export default function PostDetail({ params }) {
   
   // For optimistic UI updates
   const [optimisticPost, setOptimisticPost] = useState(null);
+
+  // Theme-aware style classes
+  const bgClass = theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50';
+  const textClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-800';
+  const secondaryTextClass = theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600';
+  const headerBgClass = theme === 'dark' ? 'bg-zinc-900' : 'bg-white';
+  const headerBorderClass = theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200';
+  const borderClass = theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200';
+  const spinnerClass = theme === 'dark' ? 'border-[#ededed]' : 'border-zinc-700';
+  const cardEmptyClass = theme === 'dark' ? 'bg-zinc-800/30 text-zinc-300 border-zinc-700' : 'bg-gray-100 text-gray-600 border-gray-200';
 
   // SWR for real-time updates
   const { data: post, error: postError, isLoading: postLoading } = useSWR(
@@ -243,6 +260,9 @@ export default function PostDetail({ params }) {
     const audios = media.filter(item => item.type === 'audio');
     const others = media.filter(item => item.type !== 'image' && item.type !== 'video' && item.type !== 'audio');
     
+    const audioBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100';
+    const fileBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100';
+    
     return (
       <div className="mt-4 space-y-4">
         {/* Image slider - only show if there are images */}
@@ -267,7 +287,7 @@ export default function PostDetail({ params }) {
         
         {/* Audio */}
         {audios.map((audio, index) => (
-          <div key={`audio-${index}`} className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+          <div key={`audio-${index}`} className={`${audioBgClass} p-4 rounded-lg`}>
             <audio 
               src={audio.url} 
               controls 
@@ -278,12 +298,12 @@ export default function PostDetail({ params }) {
         
         {/* Other files */}
         {others.map((file, index) => (
-          <div key={`file-${index}`} className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+          <div key={`file-${index}`} className={`${fileBgClass} p-4 rounded-lg`}>
             <a 
               href={file.url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-blue-500 hover:underline flex items-center"
+              className="text-blue-400 hover:underline flex items-center"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -307,16 +327,21 @@ export default function PostDetail({ params }) {
     }
   };
 
+  // Return early if not mounted (for hydration safety)
+  if (!mounted) {
+    return null; 
+  }
+
   if (postLoading) {
     return (
-      <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
+      <div className={`flex min-h-screen ${bgClass} ${textClass}`}>
         <Sidebar />
         <div className="flex-1 ml-64 p-8">
-          <Container>
+          <div className="py-6">
             <div className="flex justify-center items-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
+              <div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${spinnerClass}`}></div>
             </div>
-          </Container>
+          </div>
         </div>
       </div>
     );
@@ -324,10 +349,10 @@ export default function PostDetail({ params }) {
 
   if (postError || !post) {
     return (
-      <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
+      <div className={`flex min-h-screen ${bgClass} ${textClass}`}>
         <Sidebar />
         <div className="flex-1 ml-64 p-8">
-          <Container>
+          <div className="py-6">
             <Card className="bg-red-900/20 text-red-300 border border-red-800">
               <p className="text-lg">Error loading post. This post may not exist or has been removed.</p>
               <Button 
@@ -337,39 +362,41 @@ export default function PostDetail({ params }) {
                 Return to Home
               </Button>
             </Card>
-          </Container>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
-      {/* Sidebar */}
-      <Sidebar />
+    <div className={`flex flex-col md:flex-row min-h-screen ${bgClass} ${textClass}`}>
+      {/* Sidebar - hidden on mobile */}
+      <div className="hidden md:block md:w-64">
+        <Sidebar />
+      </div>
 
-      {/* Main content */}
-      <div className="flex-1 ml-64">
-        <header className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800 p-4 flex justify-between items-center">
+      {/* Main content - full width on mobile */}
+      <div className="flex-1 md:ml-64 w-full">
+        <header className={`sticky top-0 z-10 ${headerBgClass} border-b ${headerBorderClass} p-4 flex justify-between items-center`}>
           <button 
             onClick={() => router.back()}
-            className="text-[#ededed] hover:text-white"
+            className={`${textClass} hover:opacity-80`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
-          <h1 className="text-2xl font-bold text-[#ededed]">Post Detail</h1>
+          <h1 className={`text-xl md:text-2xl font-bold ${textClass}`}>Post Detail</h1>
           <ThemeToggle />
         </header>
 
-        <main className="p-8">
-          <Container className="py-6">
+        <main className="p-4 md:p-8">
+          <div className="py-6">
             <Card className={`mb-8 ${isSpecialOrAdmin ? 'border-green-500 border-2' : ''}`}>
               <div className="mb-6">
                 <div className="flex items-start space-x-3">
                   {/* Author Profile Image */}
-                  <div className="relative flex-shrink-0 h-12 w-12 rounded-full overflow-hidden border border-zinc-700">
+                  <div className={`relative flex-shrink-0 h-10 w-10 md:h-12 md:w-12 rounded-full overflow-hidden border ${borderClass}`}>
                     {authorDetails?.profileImageUrl ? (
                       <Image 
                         src={authorDetails.profileImageUrl} 
@@ -378,7 +405,7 @@ export default function PostDetail({ params }) {
                         className="object-cover"
                       />
                     ) : (
-                      <div className="h-full w-full bg-zinc-800 flex items-center justify-center text-zinc-500">
+                      <div className={`h-full w-full ${theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100'} flex items-center justify-center ${secondaryTextClass}`}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
@@ -387,9 +414,9 @@ export default function PostDetail({ params }) {
                   </div>
                   
                   <div className="flex-1">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start">
                       <div>
-                        <p className="text-md font-medium text-[#ededed] flex items-center">
+                        <p className={`text-md font-medium ${textClass} flex items-center`}>
                           {getAuthorDisplayName()}
                           {isSpecialOrAdmin && (
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1 text-green-500" viewBox="0 0 20 20" fill="currentColor">
@@ -397,7 +424,7 @@ export default function PostDetail({ params }) {
                             </svg>
                           )}
                         </p>
-                        <div className="flex items-center text-xs text-zinc-400 space-x-2">
+                        <div className="flex flex-wrap items-center text-xs text-zinc-400 space-x-2">
                           <span>{post.createdAt ? format(new Date(post.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}</span>
                           
                           {/* Post location */}
@@ -430,13 +457,14 @@ export default function PostDetail({ params }) {
                         </div>
                       </div>
                       
-                      <div className="flex space-x-4">
+                      {/* Action buttons - stacked on mobile, horizontal on desktop */}
+                      <div className="flex flex-wrap gap-2 mt-4 md:mt-0 md:space-x-4">
                         <button 
                           onClick={handleLike}
                           className={`flex items-center transition border rounded-md px-3 py-1.5 ${
                             optimisticPost?.likes?.includes(user?.id) 
                               ? 'text-green-400 bg-green-900/20 border-green-700' 
-                              : 'text-zinc-400 border-zinc-700 hover:border-green-700 hover:bg-green-900/10'
+                              : `${secondaryTextClass} border-${borderClass} hover:border-green-700 hover:bg-green-900/10`
                           }`}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2">
@@ -450,7 +478,7 @@ export default function PostDetail({ params }) {
                           className={`flex items-center transition border rounded-md px-3 py-1.5 ${
                             optimisticPost?.dislikes?.includes(user?.id) 
                               ? 'text-red-400 bg-red-900/20 border-red-700' 
-                              : 'text-zinc-400 border-zinc-700 hover:border-red-700 hover:bg-red-900/10'
+                              : `${secondaryTextClass} border-${borderClass} hover:border-red-700 hover:bg-red-900/10`
                           }`}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2">
@@ -461,7 +489,7 @@ export default function PostDetail({ params }) {
                         
                         <button 
                           onClick={handleReport}
-                          className="flex items-center transition border border-zinc-700 hover:border-yellow-600 hover:bg-yellow-900/10 text-zinc-400 hover:text-yellow-400 rounded-md px-3 py-1.5"
+                          className={`flex items-center transition border ${borderClass} hover:border-yellow-600 hover:bg-yellow-900/10 ${secondaryTextClass} hover:text-yellow-400 rounded-md px-3 py-1.5`}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2">
                             <path fillRule="evenodd" d="M3 2.25a.75.75 0 01.75.75v.54l1.838-.46a9.75 9.75 0 016.725.738l.108.054a8.25 8.25 0 005.58.652l3.109-.732a.75.75 0 01.917.81 47.784 47.784 0 00.005 10.337.75.75 0 01-.574.812l-3.114.733a9.75 9.75 0 01-6.594-.77l-.108-.054a8.25 8.25 0 00-5.69-.625l-2.202.55V21a.75.75 0 01-1.5 0V3A.75.75 0 013 2.25z" clipRule="evenodd" />
@@ -489,7 +517,7 @@ export default function PostDetail({ params }) {
                                 });
                               }
                             }}
-                            className="flex items-center transition border border-zinc-700 hover:border-red-600 hover:bg-red-900/10 text-zinc-400 hover:text-red-400 rounded-md px-3 py-1.5 ml-3"
+                            className={`flex items-center transition border ${borderClass} hover:border-red-600 hover:bg-red-900/10 ${secondaryTextClass} hover:text-red-400 rounded-md px-3 py-1.5`}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -503,10 +531,10 @@ export default function PostDetail({ params }) {
                 </div>
               </div>
 
-              <p className="text-[#ededed] whitespace-pre-wrap mb-6">{post.content}</p>
+              <p className={`${textClass} whitespace-pre-wrap mb-6`}>{post.content}</p>
               
-              {/* Render media attachments */}
-              {renderMedia(post.media)}
+              {/* Update media rendering for better mobile responsiveness */}
+              {renderMedia && renderMedia(post.media)}
               
               {/* Fake Score indicator for admin/special users */}
               {post.fakeScore > 0 && (
@@ -517,11 +545,11 @@ export default function PostDetail({ params }) {
             </Card>
 
             <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-6 text-[#ededed]">Comments</h2>
+              <h2 className={`text-xl font-semibold mb-6 ${textClass}`}>Comments</h2>
               
-              {/* Comment input */}
+              {/* Comment input - improve mobile layout */}
               <form onSubmit={handleSubmitComment} className="mb-8">
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0">
                   <Input
                     value={commentText}
                     onChange={(e) => {
@@ -536,7 +564,7 @@ export default function PostDetail({ params }) {
                   <Button 
                     type="submit" 
                     disabled={isSubmitting || !isSignedIn}
-                    className={`border border-zinc-700 rounded-md px-4 py-2 ${
+                    className={`sm:w-auto w-full border ${borderClass} rounded-md px-4 py-2 ${
                       isSubmitting ? 'bg-blue-900/30 text-blue-300' : 'bg-primary hover:bg-primary/80'
                     }`}
                   >
@@ -558,7 +586,7 @@ export default function PostDetail({ params }) {
               {/* Comments list */}
               {commentsLoading && (
                 <div className="flex justify-center items-center h-20">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#ededed]"></div>
+                  <div className={`animate-spin rounded-full h-5 w-5 border-b-2 ${spinnerClass}`}></div>
                 </div>
               )}
               
@@ -569,7 +597,7 @@ export default function PostDetail({ params }) {
               )}
 
               {comments && comments.length === 0 && (
-                <Card className="bg-blue-900/20 text-blue-300 border border-blue-800 mb-6">
+                <Card className={`${cardEmptyClass} mb-6`}>
                   <p>No comments yet. Be the first to add one!</p>
                 </Card>
               )}
@@ -582,11 +610,11 @@ export default function PostDetail({ params }) {
                   
                   return (
                     <Card key={comment._id} className={`border hover:border-zinc-700 transition-colors ${
-                      isSpecialOrAdminComment ? 'border-green-500 border-2' : 'border-zinc-800'
+                      isSpecialOrAdminComment ? 'border-green-500 border-2' : borderClass
                     }`}>
                       <div className="flex items-start space-x-3 mb-3">
                         {/* Comment Author Profile Image */}
-                        <div className="relative flex-shrink-0 h-10 w-10 rounded-full overflow-hidden border border-zinc-700">
+                        <div className={`relative flex-shrink-0 h-8 w-8 md:h-10 md:w-10 rounded-full overflow-hidden border ${borderClass}`}>
                           {commentAuthor.profileImageUrl ? (
                             <Image 
                               src={commentAuthor.profileImageUrl} 
@@ -595,17 +623,17 @@ export default function PostDetail({ params }) {
                               className="object-cover"
                             />
                           ) : (
-                            <div className="h-full w-full bg-zinc-800 flex items-center justify-center text-zinc-500">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className={`h-full w-full ${theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100'} flex items-center justify-center ${secondaryTextClass}`}>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                               </svg>
                             </div>
                           )}
                         </div>
                         
-                        <div className="flex-1">
+                        <div className="flex-1 break-words">
                           <div className="flex justify-between">
-                            <p className="text-sm font-medium text-[#ededed] flex items-center">
+                            <p className={`text-sm font-medium ${textClass} flex items-center`}>
                               {commentAuthor.firstName && commentAuthor.lastName 
                                 ? `${commentAuthor.firstName} ${commentAuthor.lastName}`
                                 : commentAuthor.username || 'Anonymous'}
@@ -615,48 +643,29 @@ export default function PostDetail({ params }) {
                                 </svg>
                               )}
                             </p>
-                            {commentAuthor.role && commentAuthor.role !== 'normal' && (
-                              <span className={`px-2 py-0.5 text-xs rounded-full ${
-                                commentAuthor.role === 'admin'
-                                  ? 'bg-purple-900/30 text-purple-300 border border-purple-700'
-                                  : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
-                              }`}>
-                                {commentAuthor.role}
-                              </span>
-                            )}
                           </div>
-                          <p className="text-xs text-zinc-400 flex items-center">
-                            <span>{comment.createdAt ? format(new Date(comment.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}</span>
-                            {commentAuthor.profile_location && (
-                              <span className="flex items-center ml-2">
-                                •
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mx-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                {commentAuthor.profile_location}
-                              </span>
-                            )}
+                          <p className={`${textClass} text-sm break-words`}>{comment.content}</p>
+                          <p className="text-xs text-zinc-400 mt-1">
+                            {format(new Date(comment.createdAt), 'MMM d, yyyy · h:mm a')}
                           </p>
                         </div>
                       </div>
-                      <p className="text-[#ededed] ml-13 pl-0.5">{comment.content}</p>
                     </Card>
                   );
                 })}
               </div>
             </div>
-          </Container>
-          
-          {/* Report post modal */}
-          <ReportPostModal 
-            isOpen={showReportModal}
-            onClose={closeReportModal}
-            postId={id}
-            postContent={post?.content || ''}
-          />
+          </div>
         </main>
       </div>
+      
+      {/* Report Modal */}
+      {showReportModal && (
+        <ReportPostModal
+          postId={id}
+          onClose={closeReportModal}
+        />
+      )}
     </div>
   );
 }

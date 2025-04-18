@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "ESOC App",
+  title: "Eko",
   description: "Emergency Social Coordination Application",
   icons: {
     icon: [
@@ -24,12 +24,12 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} font-sans antialiased bg-[#0a0a0a] text-[#ededed}`}
+        className={`${inter.variable} font-sans antialiased`}
       >
         <ClerkProvider>
-          <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
             {children}
           </ThemeProvider>
         </ClerkProvider>

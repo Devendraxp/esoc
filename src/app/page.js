@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useSWR from 'swr';
+import { useTheme } from 'next-themes';
 import Container from '../components/Container';
 import Sidebar from '../components/Sidebar';
 import Card from '../components/Card';
@@ -14,6 +15,13 @@ const fetcher = (url) => fetch(url).then((res) => res.json());
 export default function Home() {
   // State for user role
   const [userRole, setUserRole] = useState('normal');
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  
+  // Fix for hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // State for posts and pagination
   const [allPosts, setAllPosts] = useState([]);
@@ -21,6 +29,14 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loaderRef = useRef(null);
+
+  // Theme-aware style classes
+  const bgClass = theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50';
+  const textClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-800';
+  const headerBgClass = theme === 'dark' ? 'bg-zinc-900' : 'bg-white';
+  const borderClass = theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200';
+  const secondaryTextClass = theme === 'dark' ? 'text-zinc-500' : 'text-zinc-600';
+  const spinnerClass = theme === 'dark' ? 'border-[#ededed]' : 'border-zinc-700';
   
   // Fetch user role
   useEffect(() => {
@@ -109,25 +125,28 @@ export default function Home() {
     mutate();
   };
 
+  if (!mounted) {
+    return null; // Prevent hydration issues
+  }
+
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
+    <div className={`flex min-h-screen ${bgClass} ${textClass}`}>
       {/* Sidebar */}
       <Sidebar userRole={userRole} />
 
       {/* Main content */}
-      <div className="flex-1 ml-64">
-        <header className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800 p-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-[#ededed] text-center flex-1">Home</h1>
+      <div className="flex-1 md:ml-64 w-full">
+        <header className={`sticky top-0 z-10 ${headerBgClass} border-b ${borderClass} p-4 flex justify-between items-center`}>
+          <h1 className={`text-xl md:text-2xl font-bold ${textClass} text-center flex-1 pl-8 md:pl-0`}>Home</h1>
           <ThemeToggle />
         </header>
 
-        <main className="p-8">
-          <Container className="py-6">
-            <h2 className="text-xl font-semibold mb-8 text-[#ededed]">Recent Posts</h2>
+        <main className="p-4 md:p-8 pb-20 md:pb-8">
+            <h2 className={`text-lg md:text-xl font-semibold mb-6 md:mb-8 ${textClass}`}>Recent Posts</h2>
             
             {isLoading && !allPosts.length && (
               <div className="flex justify-center items-center h-40">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
+                <div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${spinnerClass}`}></div>
               </div>
             )}
 
@@ -143,7 +162,8 @@ export default function Home() {
               </Card>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Vertical Post Feed for both mobile and desktop */}
+            <div className="space-y-6 max-w-2xl mx-auto">
               {Array.isArray(allPosts) && allPosts.map((post) => (
                 <PostCard 
                   key={post._id} 
@@ -151,24 +171,23 @@ export default function Home() {
                   onCommentAdded={handleCommentAdded}
                 />
               ))}
+              
+              {/* Loading indicator for infinite scroll */}
+              {hasMore && (
+                <div ref={loaderRef} className="flex justify-center items-center py-4">
+                  {isLoadingMore && (
+                    <div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${spinnerClass}`}></div>
+                  )}
+                </div>
+              )}
+              
+              {/* End of posts message */}
+              {!hasMore && allPosts.length > 0 && (
+                <div className={`text-center ${secondaryTextClass} py-4`}>
+                  <p>You've reached the end of the posts</p>
+                </div>
+              )}
             </div>
-            
-            {/* Loading indicator for infinite scroll */}
-            {hasMore && (
-              <div ref={loaderRef} className="flex justify-center items-center py-8">
-                {isLoadingMore && (
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
-                )}
-              </div>
-            )}
-            
-            {/* End of posts message */}
-            {!hasMore && allPosts.length > 0 && (
-              <div className="text-center text-zinc-500 py-8">
-                <p>You've reached the end of the posts</p>
-              </div>
-            )}
-          </Container>
         </main>
       </div>
     </div>

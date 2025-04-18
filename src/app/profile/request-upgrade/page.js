@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 
-import Container from '../../../components/Container';
 import Sidebar from '../../../components/Sidebar';
 import Button from '../../../components/Button';
 import Card from '../../../components/Card';
@@ -146,11 +145,11 @@ export default function RequestUpgradePage() {
       <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
         <Sidebar userRole={userRole} />
         <div className="flex-1 ml-64 p-8">
-          <Container>
+          <div>
             <div className="flex justify-center items-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
             </div>
-          </Container>
+          </div>
         </div>
       </div>
     );
@@ -161,7 +160,7 @@ export default function RequestUpgradePage() {
       <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
         <Sidebar userRole={userRole} />
         <div className="flex-1 ml-64 p-8">
-          <Container>
+          <div>
             <Card className="bg-red-900/20 text-red-300 border border-red-800">
               <p className="text-lg">You need to be signed in to request an account upgrade.</p>
               <Button 
@@ -171,7 +170,7 @@ export default function RequestUpgradePage() {
                 Return to Home
               </Button>
             </Card>
-          </Container>
+          </div>
         </div>
       </div>
     );
@@ -198,7 +197,7 @@ export default function RequestUpgradePage() {
         </header>
 
         <main className="p-8">
-          <Container className="py-6">
+          <div className="py-6">
             {message.text && (
               <Card className={`mb-6 ${
                 message.type === 'success' ? 'bg-green-900/20 text-green-300 border border-green-800' :
@@ -336,7 +335,7 @@ export default function RequestUpgradePage() {
                 </form>
               </Card>
             )}
-          </Container>
+          </div>
         </main>
       </div>
     </div>

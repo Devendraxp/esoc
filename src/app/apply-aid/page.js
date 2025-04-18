@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
-import Container from '../../components/Container';
 import Sidebar from '../../components/Sidebar';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
@@ -130,7 +129,7 @@ export default function ApplyForAid() {
             </header>
 
             <main className="p-8">
-              <Container className="py-6">
+              <div className="py-6">
                 <Card className="mb-6">
                   <div className="mb-8">
                     <h2 className="text-xl font-semibold text-[#ededed] mb-3">Request Emergency Aid</h2>
@@ -233,7 +232,7 @@ export default function ApplyForAid() {
                     </form>
                   )}
                 </Card>
-              </Container>
+              </div>
             </main>
           </div>
         </div>

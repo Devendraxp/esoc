@@ -6,7 +6,6 @@ import useSWR from 'swr';
 import { format } from 'date-fns';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
 
-import Container from '../../../components/Container';
 import Sidebar from '../../../components/Sidebar';
 import Button from '../../../components/Button';
 import Card from '../../../components/Card';
@@ -337,7 +336,7 @@ export default function AdminDashboard() {
             </header>
 
             <main className="p-8">
-              <Container className="py-6">
+              <div className="py-6">
                 {/* Section Navigation */}
                 <div className="mb-8 border-b border-zinc-800">
                   <div className="flex flex-wrap">
@@ -940,7 +939,7 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 )}
-              </Container>
+              </div>
             </main>
           </div>
         </div>

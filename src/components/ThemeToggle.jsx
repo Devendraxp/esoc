@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Moon, Lock } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 
 const ThemeToggle = () => {
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
   // Fix for hydration mismatch
@@ -11,11 +11,15 @@ const ThemeToggle = () => {
     setMounted(true);
   }, []);
 
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
   if (!mounted) {
     return (
       <button
-        className="p-2 rounded-full bg-zinc-800 text-zinc-100 cursor-not-allowed"
-        aria-label="Dark mode locked"
+        className="p-2 rounded-full bg-zinc-800 text-zinc-100"
+        aria-label="Theme toggle loading"
         disabled
       >
         <div className="h-5 w-5" />
@@ -24,18 +28,21 @@ const ThemeToggle = () => {
   }
 
   return (
-    <div className="relative">
-      <button
-        className="p-2 rounded-full bg-zinc-800 text-zinc-300 cursor-not-allowed"
-        aria-label="Dark mode locked"
-        disabled
-      >
+    <button
+      onClick={toggleTheme}
+      className={`p-2 rounded-full transition-colors ${
+        theme === 'dark' 
+          ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' 
+          : 'bg-zinc-200 text-zinc-700 hover:bg-zinc-300'
+      }`}
+      aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      {theme === 'dark' ? (
         <Moon className="h-5 w-5" />
-      </button>
-      <div className="absolute -top-1 -right-1 bg-zinc-700 rounded-full p-0.5">
-        <Lock className="h-3 w-3 text-zinc-300" />
-      </div>
-    </div>
+      ) : (
+        <Sun className="h-5 w-5" />
+      )}
+    </button>
   );
 };
 

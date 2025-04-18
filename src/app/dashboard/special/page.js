@@ -6,7 +6,6 @@ import useSWR from 'swr';
 import { format } from 'date-fns';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
 
-import Container from '../../../components/Container';
 import Sidebar from '../../../components/Sidebar';
 import Button from '../../../components/Button';
 import Card from '../../../components/Card';
@@ -250,7 +249,7 @@ export default function SpecialDashboard() {
             </header>
 
             <main className="p-8">
-              <Container className="py-6">
+              <div className="py-6">
                 {/* Tab Navigation */}
                 <div className="mb-8 border-b border-zinc-800">
                   <div className="flex">
@@ -664,7 +663,7 @@ export default function SpecialDashboard() {
                     </div>
                   </div>
                 )}
-              </Container>
+              </div>
             </main>
           </div>
         </div>

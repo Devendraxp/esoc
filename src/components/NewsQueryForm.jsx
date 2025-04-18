@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import Button from './Button';
 import Input from './Input';
@@ -11,6 +11,21 @@ export default function NewsQueryForm({ onQueryComplete }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [response, setResponse] = useState(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+  
+  // Check if we're in a mobile view on component mount and window resize
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    
+    // Check on mount
+    checkIfMobile();
+    
+    // Check on resize
+    window.addEventListener('resize', checkIfMobile);
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
   
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -61,16 +76,16 @@ export default function NewsQueryForm({ onQueryComplete }) {
   };
   
   return (
-    <div className="mb-8">
-      <form onSubmit={handleSubmit} className="mb-6">
-        <div className="mb-4">
-          <label htmlFor="query" className="block mb-2 text-sm font-medium text-zinc-300">
+    <div className="mb-6 md:mb-8">
+      <form onSubmit={handleSubmit} className="mb-4 md:mb-6">
+        <div className="mb-3 md:mb-4">
+          <label htmlFor="query" className="block mb-1 md:mb-2 text-sm font-medium text-zinc-300">
             Ask about news or events
           </label>
           <textarea
             id="query"
-            rows="3"
-            className="w-full px-4 py-2 bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows={isMobileView ? "2" : "3"}
+            className="w-full px-3 md:px-4 py-2 text-sm md:text-base bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ask about news or events from this community."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -79,8 +94,8 @@ export default function NewsQueryForm({ onQueryComplete }) {
           />
         </div>
         
-        <div className="mb-4">
-          <label htmlFor="location" className="block mb-2 text-sm font-medium text-zinc-300">
+        <div className="mb-3 md:mb-4">
+          <label htmlFor="location" className="block mb-1 md:mb-2 text-sm font-medium text-zinc-300">
             Location (Optional)
           </label>
           <Input
@@ -90,6 +105,7 @@ export default function NewsQueryForm({ onQueryComplete }) {
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             disabled={isSubmitting}
+            className="text-sm md:text-base"
           />
         </div>
         
@@ -97,28 +113,34 @@ export default function NewsQueryForm({ onQueryComplete }) {
           <Button
             type="submit"
             disabled={isSubmitting || !query.trim()}
+            className="text-sm md:text-base px-3 py-1.5 md:px-4 md:py-2"
           >
-            {isSubmitting ? 'Processing...' : 'Ask Question'}
+            {isSubmitting ? (
+              <div className="flex items-center">
+                <span className="inline-block h-4 w-4 mr-2 rounded-full border-2 border-t-transparent border-white animate-spin"></span>
+                Processing...
+              </div>
+            ) : 'Ask Question'}
           </Button>
         </div>
       </form>
       
       {error && (
-        <Card className="mb-6">
-          <p className="text-red-300">{error}</p>
+        <Card className="mb-4 md:mb-6 bg-red-900/20 border-red-800">
+          <p className="text-red-300 text-sm md:text-base">{error}</p>
         </Card>
       )}
       
       {response && (
-        <div className="mb-6">
-          <Card className="mb-6">
-            <h3 className="text-lg font-semibold mb-2">Community Knowledge</h3>
-            <p>{response.localModelResponse}</p>
+        <div className="mb-4 md:mb-6">
+          <Card className="mb-3 md:mb-6">
+            <h3 className="text-base md:text-lg font-semibold mb-2">Community Knowledge</h3>
+            <p className="text-sm md:text-base">{response.localModelResponse}</p>
           </Card>
           
           <Card>
-            <h3 className="text-lg font-semibold mb-2">Gemini Response</h3>
-            <p>{response.grokResponse}</p>
+            <h3 className="text-base md:text-lg font-semibold mb-2">Gemini Response</h3>
+            <p className="text-sm md:text-base whitespace-pre-line">{response.grokResponse}</p>
           </Card>
         </div>
       )}
