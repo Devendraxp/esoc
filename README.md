@@ -1,38 +1,64 @@
 # Eko Project
 
-Welcome to the Eko project! This project aims to provide an innovative solution for managing and enhancing user experience through a robust set of features.
+![Eko](https://img.shields.io/badge/Eko-Project-blue.svg)
 
-## Description
-Eko is a comprehensive application designed to streamline processes and improve efficiency. It includes a variety of functionalities geared towards providing users with the best tools available.
+## 🌟 Introduction
+Eko is an **AI-powered news tracker** designed to provide users with the latest headlines and trends from around the world. Whether it's politics, technology, or entertainment, Eko keeps you informed in real time!
 
-### Features
-- Advanced user management system
-- Customizable dashboards
-- Real-time analytics and statistics widgets
-- Secure hosting and deployment options
+## 🛠️ Technology Stack
+| Technology     | Description                         |
+|----------------|-------------------------------------|
+| React          | Frontend UI library                 |
+| Node.js        | Backend runtime environment          |
+| Express        | Web framework for Node.js           |
+| MongoDB        | NoSQL database                       |
+| Docker         | Containerization platform            |
+| Vercel         | Deployment platform                  |
 
-## Setup Instructions
-To set up the Eko project, follow these steps:
-
-1. **Clone the repository:**
+## 📦 Setup Instructions
+1. Clone the repository:
    ```bash
    git clone https://github.com/Devendraxp/esoc.git
    cd esoc
    ```
-2. **Install dependencies:**
+2. Install dependencies:
    ```bash
    npm install
    ```
-3. **Run the application:**
+3. Run the application:
    ```bash
    npm start
    ```
-4. **Access the application:** Visit `http://localhost:3000` in your browser.
 
-## Stats Widgets
-Eko comes with built-in statistics widgets that provide real-time data on application performance, user engagement, and other critical metrics to help you make informed decisions.
+## 🚀 Deployment
+Eko is deployed to [ekoapp.vercel.app](https://ekoapp.vercel.app). You can access the application online!
 
-## Deployed URL
-You can access the deployed version of the Eko project at: [ekoapp.vercel.app](https://ekoapp.vercel.app)
+## 📊 Stats Widgets
+- ![GitHub stats](https://github-readme-stats.vercel.app/api?username=Devendraxp&show_icons=true&theme=radical)
+- ![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=Devendraxp&layout=compact)
 
-For any issues or contributions, feel free to reach out!
+## ⚙️ Features
+- **Real-time news updates**
+- **Personalized content feed**  
+- **AI-powered suggestions**
+- **Community engagement tools**
+
+## 📝 Comprehensive Documentation
+Refer to the detailed [documentation](https://ekoapp.vercel.app/docs) for setup, configuration, and using Eko to its full potential.
+
+## 🛠️ Troubleshooting Guide
+Need help? Check our troubleshooting section:
+- Common errors and solutions.
+- FAQs about the application.
+
+## 🤝 Contribution Guidelines
+We welcome contributions! Please see our [contributing guide](https://github.com/Devendraxp/esoc/blob/main/CONTRIBUTING.md) for more details.
+
+## 🙏 Acknowledgments
+Thank you to all the contributors and open source projects that made this possible!  
+Special thanks to [Vercel](https://vercel.com) for providing the hosting services.
+
+## 📅 Last Updated
+*Date: 2025-11-28*  
+
+**Happy Coding!**  
