@@ -1,52 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Eko Project
 
-## Getting Started
+Welcome to the Eko project! This project aims to provide an innovative solution for managing and enhancing user experience through a robust set of features.
 
-First, run the development server:
+## Description
+Eko is a comprehensive application designed to streamline processes and improve efficiency. It includes a variety of functionalities geared towards providing users with the best tools available.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Features
+- Advanced user management system
+- Customizable dashboards
+- Real-time analytics and statistics widgets
+- Secure hosting and deployment options
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup Instructions
+To set up the Eko project, follow these steps:
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## ESOC App Features
-
-### News Tracker
-
-The News Tracker is an AI-powered feature that allows users to ask questions about news and events mentioned in user posts and comments. The system combines:
-
-1. **Local Knowledge Base**: Processes and indexes content from community posts and comments, extracting factual information
-2. **Hugging Face Models**: Uses transformer models for content processing and semantic search
-3. **Gemini Integration**: Enhances responses with real-world data from Grok's knowledge base
-
-#### How It Works
-
-- The system automatically processes posts and comments in the background
-- Users ask natural language questions about news events
-- The system finds relevant information from community posts
-- Gemini enhances the response with additional real-world context
-- Users can see both the community-sourced information and the Grok-enhanced response
-
-#### Setup Requirements
-
-To use the News Tracker feature, you need to:
-
-1. Get a Gemini API key from xAI
-2. Add the API key to your `.env.local` file:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Devendraxp/esoc.git
+   cd esoc
    ```
-   GEMINI_API_KEY=your_gemini_key_here
+2. **Install dependencies:**
+   ```bash
+   npm install
    ```
+3. **Run the application:**
+   ```bash
+   npm start
+   ```
+4. **Access the application:** Visit `http://localhost:3000` in your browser.
 
-The News Tracker processes content hourly to keep information current. Users can filter queries by location for more relevant results.
+## Stats Widgets
+Eko comes with built-in statistics widgets that provide real-time data on application performance, user engagement, and other critical metrics to help you make informed decisions.
 
+## Deployed URL
+You can access the deployed version of the Eko project at: [ekoapp.vercel.app](https://ekoapp.vercel.app)
+
+For any issues or contributions, feel free to reach out!
