@@ -13,21 +13,21 @@ import ThemeToggle from '../../../components/ThemeToggle';
 export default function RequestUpgradePage() {
   const router = useRouter();
   const { isSignedIn, user, isLoaded } = useUser();
-  
-  // Form state
+
+
   const [formData, setFormData] = useState({
     organization: '',
     reason: ''
   });
-  
-  // State for loading and messages
+
+
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState('normal');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [existingRequest, setExistingRequest] = useState(null);
 
-  // Check if user is authenticated and their role
+
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
       router.push('/');
@@ -40,15 +40,15 @@ export default function RequestUpgradePage() {
     }
   }, [isLoaded, isSignedIn, user]);
 
-  // Check user role and existing request
+
   const checkUserRole = async () => {
     try {
       const response = await fetch('/api/auth/me');
       if (response.ok) {
         const data = await response.json();
         setUserRole(data.role);
-        
-        // If user is already a special user or admin, redirect to profile
+
+
         if (data.role === 'special' || data.role === 'admin') {
           setMessage({
             type: 'info',
@@ -65,8 +65,8 @@ export default function RequestUpgradePage() {
       setIsLoading(false);
     }
   };
-  
-  // Check if user already has a pending upgrade request
+
+
   const checkExistingRequest = async () => {
     try {
       const response = await fetch('/api/users/upgrade-request');
@@ -81,7 +81,7 @@ export default function RequestUpgradePage() {
     }
   };
 
-  // Handle form input changes
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevData => ({
@@ -90,13 +90,13 @@ export default function RequestUpgradePage() {
     }));
   };
 
-  // Handle form submission
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setMessage({ type: '', text: '' });
-    
-    // Validate form data
+
+
     if (!formData.organization.trim()) {
       setMessage({
         type: 'error',
@@ -105,7 +105,7 @@ export default function RequestUpgradePage() {
       setIsSubmitting(false);
       return;
     }
-    
+
     try {
       const response = await fetch('/api/users/upgrade-request', {
         method: 'POST',
@@ -114,7 +114,7 @@ export default function RequestUpgradePage() {
         },
         body: JSON.stringify(formData)
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setMessage({
@@ -163,8 +163,8 @@ export default function RequestUpgradePage() {
           <div>
             <Card className="bg-red-900/20 text-red-300 border border-red-800">
               <p className="text-lg">You need to be signed in to request an account upgrade.</p>
-              <Button 
-                className="mt-6" 
+              <Button
+                className="mt-6"
                 onClick={() => router.push('/')}
               >
                 Return to Home
@@ -178,13 +178,13 @@ export default function RequestUpgradePage() {
 
   return (
     <div className="flex min-h-screen bg-[#0a0a0a] text-[#ededed]">
-      {/* Sidebar */}
+      {}
       <Sidebar userRole={userRole} />
 
-      {/* Main content */}
+      {}
       <div className="flex-1 ml-64">
         <header className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800 p-4 flex justify-between items-center">
-          <button 
+          <button
             onClick={() => router.back()}
             className="text-[#ededed] hover:text-white"
           >
@@ -206,7 +206,7 @@ export default function RequestUpgradePage() {
               }`}>
                 <p>{message.text}</p>
                 {message.type === 'success' && (
-                  <Button 
+                  <Button
                     className="mt-4 bg-green-900/30 text-green-300 border border-green-700 hover:bg-green-800/30"
                     onClick={() => router.push('/profile')}
                   >
@@ -215,7 +215,7 @@ export default function RequestUpgradePage() {
                 )}
               </Card>
             )}
-            
+
             {existingRequest ? (
               <Card>
                 <h2 className="text-xl font-semibold mb-4 text-[#ededed]">Existing Upgrade Request</h2>
@@ -229,24 +229,24 @@ export default function RequestUpgradePage() {
                     {existingRequest.status.charAt(0).toUpperCase() + existingRequest.status.slice(1)}
                   </div>
                 </div>
-                
+
                 <div className="mb-4">
                   <p className="text-sm font-medium mb-1 text-zinc-400">Organization</p>
                   <p className="text-[#ededed]">{existingRequest.organization}</p>
                 </div>
-                
+
                 {existingRequest.reason && (
                   <div className="mb-4">
                     <p className="text-sm font-medium mb-1 text-zinc-400">Reason</p>
                     <p className="text-[#ededed]">{existingRequest.reason}</p>
                   </div>
                 )}
-                
+
                 <div className="mb-6">
                   <p className="text-sm font-medium mb-1 text-zinc-400">Requested On</p>
                   <p className="text-[#ededed]">{new Date(existingRequest.requestedAt).toLocaleDateString()}</p>
                 </div>
-                
+
                 {existingRequest.status === 'pending' ? (
                   <div className="bg-blue-900/20 text-blue-300 p-4 rounded-md mb-4">
                     <p>Your request is currently being reviewed by an administrator. You'll be notified once a decision has been made.</p>
@@ -260,8 +260,8 @@ export default function RequestUpgradePage() {
                     <p>Unfortunately, your request was not approved. You can submit a new request with additional information if needed.</p>
                   </div>
                 )}
-                
-                <Button 
+
+                <Button
                   onClick={() => router.push('/profile')}
                   className="bg-zinc-800 hover:bg-zinc-700 transition"
                 >
@@ -274,7 +274,7 @@ export default function RequestUpgradePage() {
                 <p className="text-zinc-400 mb-6">
                   Special users have enhanced capabilities to help during emergencies, including approving and processing aid requests from other users.
                 </p>
-                
+
                 <form onSubmit={handleSubmit}>
                   <div className="mb-6">
                     <label htmlFor="organization" className="block text-sm font-medium mb-1">
@@ -292,7 +292,7 @@ export default function RequestUpgradePage() {
                       Name of the organization, NGO, government agency, or community group you represent.
                     </p>
                   </div>
-                  
+
                   <div className="mb-6">
                     <label htmlFor="reason" className="block text-sm font-medium mb-1">
                       Reason for Request
@@ -310,17 +310,17 @@ export default function RequestUpgradePage() {
                       Please provide details about your role and how you intend to help during emergencies.
                     </p>
                   </div>
-                  
+
                   <div className="flex justify-end">
-                    <Button 
-                      type="button" 
+                    <Button
+                      type="button"
                       onClick={() => router.push('/profile')}
                       className="bg-zinc-800 hover:bg-zinc-700 transition mr-4"
                     >
                       Cancel
                     </Button>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={isSubmitting}
                       className="bg-blue-900/20 text-blue-400 border border-blue-700 hover:bg-blue-800/30"
                     >

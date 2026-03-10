@@ -24,12 +24,12 @@ const PostCard = ({ post, onCommentAdded }) => {
   const [inputError, setInputError] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
 
-  // Fix for hydration mismatch
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Theme-aware classes - Updated for better contrast in light mode
+
   const nameTextClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-800';
   const contentTextClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-800';
   const audioBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100';
@@ -38,46 +38,46 @@ const PostCard = ({ post, onCommentAdded }) => {
   const menuHoverClass = theme === 'dark' ? 'hover:bg-zinc-700' : 'hover:bg-gray-100';
   const dividerClass = theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200';
 
-  // For optimistic UI updates
+
   const [optimisticPost, setOptimisticPost] = useState(post);
 
-  // State for post options menu
+
   const [showOptions, setShowOptions] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const optionsRef = React.useRef(null);
 
-  // Check mobile view on mount and window resize
+
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobileView(window.innerWidth < 768);
     };
 
-    // Check on mount
+
     checkIfMobile();
 
-    // Check on resize
+
     window.addEventListener('resize', checkIfMobile);
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
-  // Check if user is the post author
+
   const isAuthor = user && (optimisticPost.author?.clerkId === user.id);
 
-  // Check if user is special or admin
+
   const [userRole, setUserRole] = useState(null);
   const isSpecialOrAdmin = userRole === 'special' || userRole === 'admin';
 
-  // Check if author is special or admin
+
   const isAuthorSpecialOrAdmin =
     (authorData?.role === 'special' || authorData?.role === 'admin') ||
     (optimisticPost.authorDetails?.role === 'special' || optimisticPost.authorDetails?.role === 'admin');
 
-  // Update optimistic post when the actual post changes
+
   useEffect(() => {
     setOptimisticPost(post);
   }, [post]);
 
-  // Fetch current user role
+
   useEffect(() => {
     const fetchUserRole = async () => {
       if (isSignedIn && user?.id) {
@@ -96,7 +96,7 @@ const PostCard = ({ post, onCommentAdded }) => {
     fetchUserRole();
   }, [isSignedIn, user]);
 
-  // Fetch author details if not already included in the post
+
   useEffect(() => {
     const fetchAuthorData = async () => {
       if (post.author?.clerkId && (!post.authorDetails || !post.authorDetails.firstName)) {

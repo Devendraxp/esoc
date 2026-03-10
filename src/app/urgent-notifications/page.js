@@ -7,39 +7,38 @@ import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
 import PostCard from '../../components/PostCard';
 
-// Fetcher function for SWR
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function UrgentNotifications() {
-  // State for user role
+
   const [userRole, setUserRole] = useState('normal');
-  
-  // State for admin posts and pagination
+
+
   const [adminPosts, setAdminPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loaderRef = useRef(null);
-  
-  // For mobile view, show one post at a time
+
+
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [isMobileView, setIsMobileView] = useState(false);
-  
-  // Detect mobile view
+
+
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobileView(window.innerWidth < 768);
     };
-    
-    // Check on mount
+
+
     checkIfMobile();
-    
-    // Check on resize
+
+
     window.addEventListener('resize', checkIfMobile);
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
-  
-  // Fetch user role
+
+
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
@@ -52,36 +51,36 @@ export default function UrgentNotifications() {
         console.error('Error fetching user role:', error);
       }
     };
-    
+
     fetchUserRole();
   }, []);
 
-  // Fetch posts with SWR, using larger limit since we're filtering
+
   const { data, error, isLoading, mutate } = useSWR(`/api/posts?page=1&limit=50`, fetcher);
 
-  // Filter and update admin posts when data changes
+
   useEffect(() => {
     if (data && data.posts) {
-      // Filter posts to only include those created by admin users
-      const filteredPosts = Array.isArray(data.posts) 
-        ? data.posts.filter(post => 
-            post.author && 
-            (post.author.role === 'admin' || 
+
+      const filteredPosts = Array.isArray(data.posts)
+        ? data.posts.filter(post =>
+            post.author &&
+            (post.author.role === 'admin' ||
              (typeof post.author === 'object' && post.author.role === 'admin'))
           )
         : [];
-      
+
       setAdminPosts(filteredPosts);
       setHasMore(data.pagination?.hasMore || false);
     }
   }, [data]);
-  
-  // Effect to handle mobile view detection for pagination
+
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handleResize = () => {
-      // Update currentPostIndex if needed when resizing
+
       if (window.innerWidth < 768 && currentPostIndex >= adminPosts.length) {
         setCurrentPostIndex(Math.max(0, adminPosts.length - 1));
       }
@@ -91,7 +90,7 @@ export default function UrgentNotifications() {
     return () => window.removeEventListener('resize', handleResize);
   }, [adminPosts.length, currentPostIndex]);
 
-  // Intersection observer for infinite scrolling
+
   const handleObserver = useCallback(
     (entries) => {
       const [target] = entries;
@@ -102,18 +101,18 @@ export default function UrgentNotifications() {
     [hasMore, isLoadingMore]
   );
 
-  // Set up the intersection observer
+
   useEffect(() => {
     const observer = new IntersectionObserver(handleObserver, {
       root: null,
       rootMargin: '20px',
       threshold: 0.1,
     });
-    
+
     if (loaderRef.current) {
       observer.observe(loaderRef.current);
     }
-    
+
     return () => {
       if (loaderRef.current) {
         observer.unobserve(loaderRef.current);
@@ -121,27 +120,27 @@ export default function UrgentNotifications() {
     };
   }, [handleObserver, loaderRef]);
 
-  // Load more posts function
+
   const loadMorePosts = async () => {
     if (!hasMore || isLoadingMore) return;
-    
+
     setIsLoadingMore(true);
     const nextPage = page + 1;
-    
+
     try {
       const response = await fetch(`/api/posts?page=${nextPage}&limit=50`);
       const newData = await response.json();
-      
+
       if (newData && newData.posts) {
         // Filter new posts for admin posts
-        const newAdminPosts = Array.isArray(newData.posts) 
-          ? newData.posts.filter(post => 
-              post.author && 
-              (post.author.role === 'admin' || 
+        const newAdminPosts = Array.isArray(newData.posts)
+          ? newData.posts.filter(post =>
+              post.author &&
+              (post.author.role === 'admin' ||
                (typeof post.author === 'object' && post.author.role === 'admin'))
             )
           : [];
-          
+
         setAdminPosts(prevPosts => [...prevPosts, ...newAdminPosts]);
         setPage(nextPage);
         setHasMore(newData.pagination?.hasMore || false);
@@ -157,7 +156,7 @@ export default function UrgentNotifications() {
   const handleCommentAdded = () => {
     mutate();
   };
-  
+
   // Mobile post navigation
   const goToPrevPost = () => {
     if (currentPostIndex > 0) {
@@ -194,7 +193,7 @@ export default function UrgentNotifications() {
               <h2 className="text-lg md:text-xl font-semibold mb-1 md:mb-2 text-[#ededed]">Admin Announcements</h2>
               <p className="text-sm md:text-base text-zinc-400">Important announcements and updates from administrators</p>
             </div>
-            
+
             {isLoading && !adminPosts.length && (
               <div className="flex justify-center items-center h-40">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
@@ -212,28 +211,28 @@ export default function UrgentNotifications() {
                 <p className="text-sm md:text-base">No admin announcements available at this time.</p>
               </Card>
             )}
-            
+
             {/* Mobile View: Single Post with Navigation */}
             <div className="md:hidden">
               {adminPosts.length > 0 && (
                 <>
                   {/* Current post */}
                   <div className="mb-4">
-                    <PostCard 
-                      key={adminPosts[currentPostIndex]?._id} 
+                    <PostCard
+                      key={adminPosts[currentPostIndex]?._id}
                       post={adminPosts[currentPostIndex]}
                       onCommentAdded={handleCommentAdded}
                     />
                   </div>
-                  
+
                   {/* Post navigation controls */}
                   <div className="flex justify-between items-center mt-6 mb-4">
-                    <button 
-                      onClick={goToPrevPost} 
+                    <button
+                      onClick={goToPrevPost}
                       disabled={currentPostIndex <= 0}
                       className={`px-4 py-2 rounded-md flex items-center ${
-                        currentPostIndex <= 0 
-                          ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
+                        currentPostIndex <= 0
+                          ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                           : 'bg-zinc-800 text-[#ededed] hover:bg-zinc-700'
                       }`}
                     >
@@ -242,13 +241,13 @@ export default function UrgentNotifications() {
                       </svg>
                       Previous
                     </button>
-                    
+
                     <span className="text-zinc-400 text-sm">
                       {currentPostIndex + 1} of {adminPosts.length}{hasMore ? '+' : ''}
                     </span>
-                    
-                    <button 
-                      onClick={goToNextPost} 
+
+                    <button
+                      onClick={goToNextPost}
                       disabled={currentPostIndex >= adminPosts.length - 1 && !hasMore}
                       className={`px-4 py-2 rounded-md flex items-center ${
                         currentPostIndex >= adminPosts.length - 1 && !hasMore
@@ -264,7 +263,7 @@ export default function UrgentNotifications() {
                   </div>
                 </>
               )}
-              
+
               {/* Mobile loading indicator */}
               {isLoadingMore && (
                 <div className="flex justify-center items-center py-6">
@@ -276,14 +275,14 @@ export default function UrgentNotifications() {
             {/* Desktop View: Grid Layout */}
             <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {Array.isArray(adminPosts) && adminPosts.map((post) => (
-                <PostCard 
-                  key={post._id} 
+                <PostCard
+                  key={post._id}
                   post={post}
                   onCommentAdded={handleCommentAdded}
                 />
               ))}
             </div>
-            
+
             {/* Loading indicator for infinite scroll (desktop only) */}
             <div className="hidden md:block">
               {hasMore && (
@@ -294,7 +293,7 @@ export default function UrgentNotifications() {
                 </div>
               )}
             </div>
-            
+
             {/* End of posts message */}
             {!hasMore && adminPosts.length > 0 && (
               <div className="text-center text-zinc-500 py-6 md:py-8">

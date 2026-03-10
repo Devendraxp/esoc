@@ -11,22 +11,22 @@ export default function SpecialReports() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('pending');
-  
+
   useEffect(() => {
-    // Fetch reports
+
     const fetchReports = async () => {
       if (!isSignedIn) return;
-      
+
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const response = await fetch(`/api/reports?status=${filter}`);
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch reports');
         }
-        
+
         const data = await response.json();
         console.log('Reports data:', data);
         setReports(data);
@@ -37,10 +37,10 @@ export default function SpecialReports() {
         setIsLoading(false);
       }
     };
-    
+
     fetchReports();
   }, [isSignedIn, filter]);
-  
+
   // Handle report actions
   const handleReportAction = async (reportId, action) => {
     try {
@@ -54,25 +54,25 @@ export default function SpecialReports() {
           action
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to process report');
       }
-      
+
       // Update the reports list
-      setReports(prevReports => 
+      setReports(prevReports =>
         prevReports.filter(report => report._id !== reportId)
       );
-      
+
       // Show success message
       alert(`Report ${action === 'agree' ? 'approved and content deleted' : action === 'disagree' ? 'dismissed' : 'marked as read'}`);
-      
+
     } catch (error) {
       console.error('Error handling report:', error);
       alert('An error occurred. Please try again.');
     }
   };
-  
+
   // Navigate to the reported content
   const viewContent = (report) => {
     if (report.type === 'post' && report.post) {
@@ -81,7 +81,7 @@ export default function SpecialReports() {
       router.push(`/posts/${report.post._id}#comment-${report.comment?._id}`);
     }
   };
-  
+
   // Render report content based on type
   const renderReportContent = (report) => {
     if (report.type === 'post') {
@@ -91,7 +91,7 @@ export default function SpecialReports() {
     }
     return 'Content unavailable';
   };
-  
+
   if (!isSignedIn) {
     return (
       <div className="p-6 text-center">
@@ -99,40 +99,40 @@ export default function SpecialReports() {
       </div>
     );
   }
-  
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Reports Management</h1>
-      
+
       {/* Filter tabs */}
       <div className="flex mb-6 border-b border-zinc-700">
-        <button 
+        <button
           onClick={() => setFilter('pending')}
           className={`px-4 py-2 font-medium ${filter === 'pending' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-zinc-400'}`}
         >
           Pending
         </button>
-        <button 
+        <button
           onClick={() => setFilter('agreed')}
           className={`px-4 py-2 font-medium ${filter === 'agreed' ? 'text-green-500 border-b-2 border-green-500' : 'text-zinc-400'}`}
         >
           Approved
         </button>
-        <button 
+        <button
           onClick={() => setFilter('disagreed')}
           className={`px-4 py-2 font-medium ${filter === 'disagreed' ? 'text-red-500 border-b-2 border-red-500' : 'text-zinc-400'}`}
         >
           Dismissed
         </button>
       </div>
-      
+
       {/* Error state */}
       {error && (
         <div className="bg-red-900/20 text-red-500 p-4 rounded-md mb-6">
           {error}
         </div>
       )}
-      
+
       {/* Loading state */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
@@ -157,44 +157,44 @@ export default function SpecialReports() {
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="mt-3">
                   <h3 className="text-sm font-medium text-zinc-300">Report details:</h3>
                   <p className="text-zinc-400 mt-1">{report.content}</p>
                 </div>
               </div>
-              
+
               <div className="p-4 bg-zinc-900">
                 <h3 className="text-sm font-medium text-zinc-300 mb-2">Reported Content:</h3>
                 <div className="bg-zinc-800 p-3 rounded-md text-zinc-300">
                   {renderReportContent(report)}
                 </div>
-                
+
                 <div className="mt-4 flex justify-end space-x-2">
                   {(report.post || report.comment) && (
-                    <button 
+                    <button
                       onClick={() => viewContent(report)}
                       className="px-3 py-1.5 text-xs font-medium bg-zinc-700 text-zinc-300 rounded hover:bg-zinc-600"
                     >
                       View in Context
                     </button>
                   )}
-                  
+
                   {filter === 'pending' && (
                     <>
-                      <button 
+                      <button
                         onClick={() => handleReportAction(report._id, 'agree')}
                         className="px-3 py-1.5 text-xs font-medium bg-green-900/30 text-green-400 rounded hover:bg-green-800"
                       >
                         Approve & Delete Content
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleReportAction(report._id, 'disagree')}
                         className="px-3 py-1.5 text-xs font-medium bg-red-900/30 text-red-400 rounded hover:bg-red-800"
                       >
                         Dismiss Report
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleReportAction(report._id, 'read')}
                         className="px-3 py-1.5 text-xs font-medium bg-zinc-700 text-zinc-300 rounded hover:bg-zinc-600"
                       >

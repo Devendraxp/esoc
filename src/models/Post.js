@@ -20,10 +20,10 @@ const PostSchema = new mongoose.Schema({
     public_id: { type: String }
   }],
   likes: [{
-    type: String // Clerk user IDs for users who liked the post
+    type: String
   }],
   dislikes: [{
-    type: String // Clerk user IDs for users who disliked the post
+    type: String
   }],
   reports: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -32,27 +32,33 @@ const PostSchema = new mongoose.Schema({
   fakeScore: {
     type: Number,
     default: 0
+  },
+  flagged: {
+    type: Boolean,
+    default: false
+  },
+  flagReason: {
+    type: String,
+    default: ''
   }
 }, { timestamps: true });
 
-// Ensure virtuals are included in JSON
 PostSchema.set('toJSON', { virtuals: true });
 PostSchema.set('toObject', { virtuals: true });
 
-// Safe model registration that checks for Edge runtime
 let Post;
 try {
-  // Only check/delete the model in non-edge environments
+
   if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge' && mongoose.models.Post) {
     delete mongoose.models.Post;
   }
-  
-  // Register model
+
+
   Post = mongoose.models.Post || mongoose.model('Post', PostSchema);
 } catch (error) {
   console.error('Error registering Post model:', error);
-  // Provide a minimal model stub for Edge runtime
-  Post = { 
+
+  Post = {
     findById: () => Promise.resolve(null),
     find: () => Promise.resolve([])
   };

@@ -15,31 +15,31 @@ const Sidebar = ({ userRole = 'normal' }) => {
   const [isMobileView, setIsMobileView] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Fix for hydration mismatch
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Check if we're in a mobile view on component mount and window resize
+
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobileView(window.innerWidth < 768);
     };
 
-    // Check on mount
+
     checkIfMobile();
 
-    // Check on resize
+
     window.addEventListener('resize', checkIfMobile);
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
-  // Close mobile menu when navigating to a new page
+
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // Theme-aware style classes
+
   const bgClass = theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-white';
   const borderClass = theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200';
   const textClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-900';
@@ -52,7 +52,7 @@ const Sidebar = ({ userRole = 'normal' }) => {
   const activeHoverClass = theme === 'dark' ? 'hover:bg-zinc-900/50' : 'hover:bg-zinc-100/80';
   const secondaryTextClass = theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500';
 
-  // Navigation links
+
   const navItems = [
     { name: 'Home', href: '/', icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -82,13 +82,13 @@ const Sidebar = ({ userRole = 'normal' }) => {
     )},
   ];
 
-  // Admin & Special user links - conditionally displayed
+
   const dashboardLinks = [];
 
-  // Add dashboard link for admin users
+
   if (userRole === 'admin') {
-    dashboardLinks.push({ 
-      name: 'Admin Dashboard', 
+    dashboardLinks.push({
+      name: 'Admin Dashboard',
       href: '/dashboard/admin',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -98,10 +98,10 @@ const Sidebar = ({ userRole = 'normal' }) => {
     });
   }
 
-  // Add dashboard link for special users
+
   if (userRole === 'special') {
-    dashboardLinks.push({ 
-      name: 'Special Dashboard', 
+    dashboardLinks.push({
+      name: 'Special Dashboard',
       href: '/dashboard/special',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -111,10 +111,10 @@ const Sidebar = ({ userRole = 'normal' }) => {
     });
   }
 
-  // Combine all links
+
   const allLinks = [...navItems, ...dashboardLinks];
 
-  // Function to determine if a link is active
+
   const isActiveLink = (href) => {
     if (href === '/') {
       return pathname === '/';
@@ -122,9 +122,9 @@ const Sidebar = ({ userRole = 'normal' }) => {
     return pathname.startsWith(href);
   };
 
-  // Mobile hamburger menu button
+
   const MobileMenuButton = () => (
-    <button 
+    <button
       onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       className={`md:hidden fixed top-4 left-4 z-50 p-2 rounded-md ${menuBgClass} ${textClass}`}
       aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
@@ -206,13 +206,13 @@ const Sidebar = ({ userRole = 'normal' }) => {
             </div>
 
             <div className="flex gap-2 w-full">
-              <Link 
-                href="/profile" 
+              <Link
+                href="/profile"
                 className={`flex-1 text-center py-1 text-xs rounded-md ${menuBgClass} ${menuHoverClass} transition`}
               >
                 Profile
               </Link>
-              <button 
+              <button
                 onClick={() => signOut()}
                 className={`flex-1 text-center py-1 text-xs rounded-md ${menuBgClass} ${menuHoverClass} transition`}
               >
@@ -244,7 +244,7 @@ const Sidebar = ({ userRole = 'normal' }) => {
           <ul className={`divide-y ${cardDividerClass}`}>
             {allLinks.map((item) => (
               <li key={item.name}>
-                <Link 
+                <Link
                   href={item.href}
                   className={`block px-4 py-3 text-sm font-medium transition flex items-center
                     ${isActiveLink(item.href)
@@ -261,7 +261,7 @@ const Sidebar = ({ userRole = 'normal' }) => {
         </Card>
       </nav>
 
-      {/* Logo at the bottom of sidebar */}
+      {}
       <div className="absolute bottom-6 w-full flex justify-center">
         <div className="relative h-40 w-60">
           <Image
@@ -275,7 +275,7 @@ const Sidebar = ({ userRole = 'normal' }) => {
     </div>
   );
 
-  // Mobile full-screen menu
+
   const renderMobileMenu = () => (
     <div className={`md:hidden fixed inset-0 z-40 ${bgClass} transform transition-transform duration-300 ease-in-out ${
       isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
@@ -329,7 +329,7 @@ const Sidebar = ({ userRole = 'normal' }) => {
           <ul className={`divide-y ${cardDividerClass}`}>
             {allLinks.map((item) => (
               <li key={item.name}>
-                <Link 
+                <Link
                   href={item.href}
                   className={`block px-4 py-4 text-base font-medium transition flex items-center
                     ${isActiveLink(item.href)
@@ -345,9 +345,9 @@ const Sidebar = ({ userRole = 'normal' }) => {
           </ul>
         </Card>
 
-        {/* Sign out button for mobile */}
+        {}
         {isSignedIn && (
-          <button 
+          <button
             onClick={() => signOut()}
             className={`mt-auto mx-4 mb-4 py-3 text-sm font-medium rounded-md ${menuBgClass} ${menuHoverClass} transition flex items-center justify-center`}
           >

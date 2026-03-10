@@ -12,39 +12,39 @@ export default function NewsQueryForm({ onQueryComplete }) {
   const [error, setError] = useState('');
   const [response, setResponse] = useState(null);
   const [isMobileView, setIsMobileView] = useState(false);
-  
-  // Check if we're in a mobile view on component mount and window resize
+
+
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobileView(window.innerWidth < 768);
     };
-    
-    // Check on mount
+
+
     checkIfMobile();
-    
-    // Check on resize
+
+
     window.addEventListener('resize', checkIfMobile);
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
-  
-  // Handle form submission
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!isSignedIn) {
       setError('You must be signed in to use the news tracker');
       return;
     }
-    
+
     if (!query.trim()) {
       setError('Please enter a question');
       return;
     }
-    
+
     setIsSubmitting(true);
     setError('');
     setResponse(null);
-    
+
     try {
       const res = await fetch('/api/news-tracker/query', {
         method: 'POST',
@@ -56,15 +56,15 @@ export default function NewsQueryForm({ onQueryComplete }) {
           location: location.trim()
         }),
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || 'Failed to process query');
       }
-      
+
       const data = await res.json();
       setResponse(data);
-      
+
       if (onQueryComplete) {
         onQueryComplete(data);
       }
@@ -74,7 +74,7 @@ export default function NewsQueryForm({ onQueryComplete }) {
       setIsSubmitting(false);
     }
   };
-  
+
   return (
     <div className="mb-6 md:mb-8">
       <form onSubmit={handleSubmit} className="mb-4 md:mb-6">
@@ -93,7 +93,7 @@ export default function NewsQueryForm({ onQueryComplete }) {
             required
           />
         </div>
-        
+
         <div className="mb-3 md:mb-4">
           <label htmlFor="location" className="block mb-1 md:mb-2 text-sm font-medium text-zinc-300">
             Location (Optional)
@@ -108,7 +108,7 @@ export default function NewsQueryForm({ onQueryComplete }) {
             className="text-sm md:text-base"
           />
         </div>
-        
+
         <div className="flex justify-end">
           <Button
             type="submit"
@@ -124,22 +124,17 @@ export default function NewsQueryForm({ onQueryComplete }) {
           </Button>
         </div>
       </form>
-      
+
       {error && (
         <Card className="mb-4 md:mb-6 bg-red-900/20 border-red-800">
           <p className="text-red-300 text-sm md:text-base">{error}</p>
         </Card>
       )}
-      
+
       {response && (
         <div className="mb-4 md:mb-6">
           <Card className="mb-3 md:mb-6">
-            <h3 className="text-base md:text-lg font-semibold mb-2">Community Knowledge</h3>
-            <p className="text-sm md:text-base">{response.localModelResponse}</p>
-          </Card>
-          
-          <Card>
-            <h3 className="text-base md:text-lg font-semibold mb-2">Gemini Response</h3>
+            <h3 className="text-base md:text-lg font-semibold mb-2">Eko AI Response</h3>
             <p className="text-sm md:text-base whitespace-pre-line">{response.grokResponse}</p>
           </Card>
         </div>

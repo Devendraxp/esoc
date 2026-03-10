@@ -3,14 +3,13 @@ import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
 import User from '../../../../../models/User';
 
-// Database connection function
 async function connectToDatabase() {
   if (mongoose.connection.readyState >= 1) {
     return;
   }
-  
+
   const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/esoc-app';
-  
+
   try {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
@@ -22,48 +21,48 @@ async function connectToDatabase() {
 export async function POST(request, { params }) {
   try {
     const { userId } = getAuth(request);
-    
+
     if (!userId) {
       return NextResponse.json(
         { message: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
     const userIdToDemote = params.id;
-    
+
     await connectToDatabase();
-    
+
     const adminUser = await User.findOne({ clerkId: userId });
-    
+
     if (!adminUser || adminUser.role !== 'admin') {
       return NextResponse.json(
         { message: 'Unauthorized - Admin access required' },
         { status: 403 }
       );
     }
-    
+
     const userToDemote = await User.findOne({ clerkId: userIdToDemote });
-    
+
     if (!userToDemote) {
       return NextResponse.json(
         { message: 'User not found' },
         { status: 404 }
       );
     }
-    
-    // Cannot demote other admins
+
+
     if (userToDemote.role === 'admin') {
       return NextResponse.json(
         { message: 'Cannot demote admin users' },
         { status: 400 }
       );
     }
-    
+
     userToDemote.role = 'normal';
     await userToDemote.save();
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       message: 'User demoted to regular user successfully',
       id: userIdToDemote
     });

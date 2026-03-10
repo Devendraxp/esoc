@@ -19,12 +19,12 @@ export default function ProfilePage() {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Fix for hydration mismatch
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Profile form state
+
   const [formData, setFormData] = useState({
     username: '',
     firstName: '',
@@ -33,15 +33,15 @@ export default function ProfilePage() {
     bio: ''
   });
 
-  // State for location suggestions
+
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
-  // State for profile navigation
+
   const [activeSection, setActiveSection] = useState('profile');
 
-  // State for aid requests, posts, and comments
+
   const [aidRequests, setAidRequests] = useState([]);
   const [userPosts, setUserPosts] = useState([]);
   const [userComments, setUserComments] = useState([]);
@@ -50,37 +50,37 @@ export default function ProfilePage() {
   const [isLoadingComments, setIsLoadingComments] = useState(true);
   const [activeTab, setActiveTab] = useState('posts');
 
-  // State for user data and loading
+
   const [dbUser, setDbUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [userRole, setUserRole] = useState('normal');
 
-  // State for editing posts and comments
+
   const [editModal, setEditModal] = useState({ isOpen: false, type: null, data: null });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, type: null, id: null });
   const [editContent, setEditContent] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
-  // State for mobile detection
+
   const [isMobileView, setIsMobileView] = useState(false);
 
-  // Detect mobile view
+
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobileView(window.innerWidth < 768);
     };
 
-    // Check on mount
+
     checkIfMobile();
 
-    // Check on resize
+
     window.addEventListener('resize', checkIfMobile);
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
-  // Load user data when component mounts
+
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
       router.push('/');
@@ -88,7 +88,7 @@ export default function ProfilePage() {
     }
 
     if (isLoaded && isSignedIn) {
-      // Set initial form data from Clerk user
+
       setFormData({
         username: user.username || '',
         firstName: user.firstName || '',
@@ -97,17 +97,17 @@ export default function ProfilePage() {
         bio: ''
       });
 
-      // Fetch additional user data from our database
+
       fetchUserData();
 
-      // Fetch user's aid requests, posts, and comments
+
       fetchUserAidRequests();
       fetchUserPosts();
       fetchUserComments();
     }
   }, [isLoaded, isSignedIn, user]);
 
-  // Theme-aware style classes
+
   const bgClass = theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50';
   const textClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-800';
   const secondaryTextClass = theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600';
@@ -126,7 +126,7 @@ export default function ProfilePage() {
   const spinnerClass = theme === 'dark' ? 'border-zinc-200' : 'border-zinc-700';
   const deleteButtonClass = theme === 'dark' ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600';
 
-  // The rest of your functions remain the same
+
   const fetchUserData = async () => {
     try {
       const response = await fetch(`/api/users/${user.id}`);
@@ -481,8 +481,8 @@ export default function ProfilePage() {
         <div className="flex-1 md:ml-64 p-4 md:p-8">
           <Card className="bg-red-900/20 text-red-300 border border-red-800">
             <p className="text-base md:text-lg">You need to be signed in to view your profile.</p>
-            <Button 
-              className="mt-6" 
+            <Button
+              className="mt-6"
               onClick={() => router.push('/')}
             >
               Return to Home
@@ -501,7 +501,7 @@ export default function ProfilePage() {
       {/* Main content */}
       <div className="flex-1 md:ml-64 w-full">
         <header className={`sticky top-0 z-10 ${headerBgClass} border-b ${borderClass} p-4 flex justify-between items-center`}>
-          <button 
+          <button
             onClick={() => router.back()}
             className={`${textClass} hover:opacity-75`}
           >
@@ -516,30 +516,30 @@ export default function ProfilePage() {
         <main className="p-4 md:p-8 pb-20 md:pb-8">
           {/* Profile navigation menu */}
           <div className={`mb-6 flex ${navBgClass} rounded-lg border ${borderClass} overflow-hidden overflow-x-auto`}>
-            <button 
+            <button
               className={`px-3 py-2 md:py-3 md:px-4 text-center transition whitespace-nowrap ${
-                activeSection === 'profile' 
-                  ? `${activeNavBgClass} ${activeNavTextClass} border-b-2 ${activeNavBorderClass}` 
+                activeSection === 'profile'
+                  ? `${activeNavBgClass} ${activeNavTextClass} border-b-2 ${activeNavBorderClass}`
                   : navItemClass
               }`}
               onClick={() => setActiveSection('profile')}
             >
               Profile
             </button>
-            <button 
+            <button
               className={`px-3 py-2 md:py-3 md:px-4 text-center transition whitespace-nowrap ${
-                activeSection === 'aid' 
-                  ? `${activeNavBgClass} ${activeNavTextClass} border-b-2 ${activeNavBorderClass}` 
+                activeSection === 'aid'
+                  ? `${activeNavBgClass} ${activeNavTextClass} border-b-2 ${activeNavBorderClass}`
                   : navItemClass
               }`}
               onClick={() => setActiveSection('aid')}
             >
               Aid Requests
             </button>
-            <button 
+            <button
               className={`px-3 py-2 md:py-3 md:px-4 text-center transition whitespace-nowrap ${
-                activeSection === 'content' 
-                  ? `${activeNavBgClass} ${activeNavTextClass} border-b-2 ${activeNavBorderClass}` 
+                activeSection === 'content'
+                  ? `${activeNavBgClass} ${activeNavTextClass} border-b-2 ${activeNavBorderClass}`
                   : navItemClass
               }`}
               onClick={() => setActiveSection('content')}
@@ -552,7 +552,7 @@ export default function ProfilePage() {
           {editModal.isOpen && (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
               <div className={`${modalBgClass} rounded-lg w-full max-w-lg p-4 md:p-6 relative border ${borderClass}`}>
-                <button 
+                <button
                   onClick={closeEditModal}
                   className={`absolute top-3 right-3 md:top-4 md:right-4 ${secondaryTextClass} hover:${textClass}`}
                 >
@@ -644,7 +644,7 @@ export default function ProfilePage() {
                       )}
                     </div>
 
-                    <Button 
+                    <Button
                       onClick={handleProfileImageUpdate}
                       size="small"
                       className="text-xs md:text-sm mb-2"
@@ -653,8 +653,8 @@ export default function ProfilePage() {
                     </Button>
 
                     <p className={`text-2xs md:text-xs ${secondaryTextClass}`}>
-                      Member since: {dbUser?.joinedAt 
-                        ? new Date(dbUser.joinedAt).toLocaleDateString() 
+                      Member since: {dbUser?.joinedAt
+                        ? new Date(dbUser.joinedAt).toLocaleDateString()
                         : new Date(user.createdAt).toLocaleDateString()
                       }
                     </p>
@@ -731,8 +731,8 @@ export default function ProfilePage() {
                         {showSuggestions && (
                           <ul className={`mt-2 ${cardBgClass} border ${borderClass} rounded-md max-h-40 overflow-y-auto`}>
                             {locationSuggestions.map((suggestion, index) => (
-                              <li 
-                                key={index} 
+                              <li
+                                key={index}
                                 className={`p-2 hover:bg-opacity-20 hover:bg-gray-500 cursor-pointer text-sm ${textClass}`}
                                 onClick={() => selectSuggestion(suggestion)}
                               >
@@ -766,8 +766,8 @@ export default function ProfilePage() {
                       </div>
 
                       <div className="flex justify-end">
-                        <Button 
-                          type="submit" 
+                        <Button
+                          type="submit"
                           disabled={isSaving}
                           className={`w-full md:w-auto px-4 md:px-6 py-1.5 md:py-2 ${theme === 'dark' ? 'bg-green-900/20 text-green-400 border border-green-700 hover:bg-green-800/30' : 'bg-green-100 text-green-700 border border-green-300 hover:bg-green-200'} rounded-md transition text-sm md:text-base`}
                         >
@@ -805,7 +805,7 @@ export default function ProfilePage() {
                 )}
 
                 <div className={`border-t ${borderClass} pt-4 md:pt-6 flex flex-col md:flex-row justify-between`}>
-                  <Button 
+                  <Button
                     onClick={() => openUserProfile()}
                     variant="secondary"
                     className="mb-3 md:mb-0 text-sm md:text-base"
@@ -814,7 +814,7 @@ export default function ProfilePage() {
                   </Button>
 
                   {userRole === 'normal' && (
-                    <Button 
+                    <Button
                       onClick={() => router.push('/profile/request-upgrade')}
                       className={`${theme === 'dark' ? 'bg-blue-900/20 text-blue-400 border border-blue-700 hover:bg-blue-800/30' : 'bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200'} transition text-sm md:text-base`}
                     >
@@ -838,7 +838,7 @@ export default function ProfilePage() {
               ) : aidRequests.length === 0 ? (
                 <div className={`${theme === 'dark' ? 'bg-blue-900/20 text-blue-300' : 'bg-blue-100 text-blue-700'} p-3 md:p-4 rounded-md`}>
                   <p className="text-sm md:text-base">You haven't made any aid requests yet.</p>
-                  <Button 
+                  <Button
                     className={`mt-3 md:mt-4 ${theme === 'dark' ? 'bg-blue-900/30 text-blue-300 border border-blue-700 hover:bg-blue-800/30' : 'bg-blue-200 text-blue-700 border border-blue-300 hover:bg-blue-300'} px-3 md:px-4 py-1.5 md:py-2 rounded-md transition text-sm md:text-base`}
                     onClick={() => router.push('/apply-aid')}
                   >
@@ -848,8 +848,8 @@ export default function ProfilePage() {
               ) : (
                 <div className="space-y-3 md:space-y-4">
                   {aidRequests.map((request) => (
-                    <div 
-                      key={request._id} 
+                    <div
+                      key={request._id}
                       className={`p-3 md:p-4 ${cardBgClass} border ${borderClass} rounded-lg`}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -890,8 +890,8 @@ export default function ProfilePage() {
               <div className={`flex border-b ${borderClass} mb-3 md:mb-4`}>
                 <button
                   className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium ${
-                    activeTab === 'posts' 
-                      ? `${textClass} border-b-2 border-blue-500` 
+                    activeTab === 'posts'
+                      ? `${textClass} border-b-2 border-blue-500`
                       : `${secondaryTextClass} ${tabHoverClass}`
                   }`}
                   onClick={() => setActiveTab('posts')}
@@ -900,8 +900,8 @@ export default function ProfilePage() {
                 </button>
                 <button
                   className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium ${
-                    activeTab === 'comments' 
-                      ? `${textClass} border-b-2 border-blue-500` 
+                    activeTab === 'comments'
+                      ? `${textClass} border-b-2 border-blue-500`
                       : `${secondaryTextClass} ${tabHoverClass}`
                   }`}
                   onClick={() => setActiveTab('comments')}
@@ -910,7 +910,7 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              {/* Posts Tab Content */}
+              {}
               {activeTab === 'posts' && (
                 <>
                   {isLoadingPosts ? (
@@ -920,7 +920,7 @@ export default function ProfilePage() {
                   ) : userPosts.length === 0 ? (
                     <div className={`${theme === 'dark' ? 'bg-blue-900/20 text-blue-300' : 'bg-blue-100 text-blue-700'} p-3 md:p-4 rounded-md`}>
                       <p className="text-sm md:text-base">You haven't created any posts yet.</p>
-                      <Button 
+                      <Button
                         className={`mt-3 md:mt-4 ${theme === 'dark' ? 'bg-blue-900/30 text-blue-300 border border-blue-700 hover:bg-blue-800/30' : 'bg-blue-200 text-blue-700 border border-blue-300 hover:bg-blue-300'} px-3 md:px-4 py-1.5 md:py-2 rounded-md transition text-sm md:text-base`}
                         onClick={() => router.push('/create-post')}
                       >
@@ -930,14 +930,14 @@ export default function ProfilePage() {
                   ) : (
                     <div className="space-y-3 md:space-y-4">
                       {userPosts.map((post) => (
-                        <div 
-                          key={post._id} 
+                        <div
+                          key={post._id}
                           className={`p-3 md:p-4 ${cardBgClass} border ${borderClass} rounded-lg`}
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex-1 mr-3 md:mr-4">
                               <p className={`text-2xs md:text-sm ${secondaryTextClass} mb-1`}>
-                                {new Date(post.createdAt).toLocaleDateString()} 
+                                {new Date(post.createdAt).toLocaleDateString()}
                                 {post.location && ` • ${post.location}`}
                               </p>
                               <p className={`text-sm md:text-base ${textClass} line-clamp-2`}>{post.content}</p>
@@ -958,7 +958,7 @@ export default function ProfilePage() {
                               </div>
                             </div>
                             <div className="flex space-x-1 md:space-x-2">
-                              <button 
+                              <button
                                 onClick={() => router.push(`/posts/${post._id}`)}
                                 className={`p-1.5 md:p-2 ${secondaryTextClass} hover:${textClass} transition`}
                                 title="View"
@@ -968,7 +968,7 @@ export default function ProfilePage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleEditPost(post)}
                                 className="p-1.5 md:p-2 text-zinc-400 hover:text-blue-400 transition"
                                 title="Edit"
@@ -977,7 +977,7 @@ export default function ProfilePage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleDeletePost(post._id)}
                                 className="p-1.5 md:p-2 text-zinc-400 hover:text-red-400 transition"
                                 title="Delete"
@@ -1009,8 +1009,8 @@ export default function ProfilePage() {
                   ) : (
                     <div className="space-y-3 md:space-y-4">
                       {userComments.map((comment) => (
-                        <div 
-                          key={comment._id} 
+                        <div
+                          key={comment._id}
                           className={`p-3 md:p-4 ${cardBgClass} border ${borderClass} rounded-lg`}
                         >
                           <div className="flex justify-between items-start">
@@ -1022,7 +1022,7 @@ export default function ProfilePage() {
                               <p className={`text-sm md:text-base ${textClass}`}>{comment.content}</p>
                             </div>
                             <div className="flex space-x-1 md:space-x-2">
-                              <button 
+                              <button
                                 onClick={() => router.push(`/posts/${comment.postId}`)}
                                 className={`p-1.5 md:p-2 ${secondaryTextClass} hover:${textClass} transition`}
                                 title="View"
@@ -1032,7 +1032,7 @@ export default function ProfilePage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleEditComment(comment)}
                                 className="p-1.5 md:p-2 text-zinc-400 hover:text-blue-400 transition"
                                 title="Edit"
@@ -1041,7 +1041,7 @@ export default function ProfilePage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleDeleteComment(comment._id)}
                                 className="p-1.5 md:p-2 text-zinc-400 hover:text-red-400 transition"
                                 title="Delete"

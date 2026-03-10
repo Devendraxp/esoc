@@ -4,14 +4,13 @@ import { clerkClient } from '@clerk/clerk-sdk-node';
 import mongoose from 'mongoose';
 import User from '../../../../models/User';
 
-// Database connection function
 async function connectToDatabase() {
   if (mongoose.connection.readyState >= 1) {
     return;
   }
-  
+
   const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/esoc-app';
-  
+
   try {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
@@ -20,38 +19,37 @@ async function connectToDatabase() {
   }
 }
 
-// Sync all emails from Clerk to our database
 export async function POST(request) {
   try {
     const { userId } = getAuth(request);
-    
+
     if (!userId) {
       return NextResponse.json(
         { message: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
     await connectToDatabase();
-    
-    // Find the current user to check if they're an admin
+
+
     const currentUser = await User.findOne({ clerkId: userId });
-    
+
     if (!currentUser || currentUser.role !== 'admin') {
       return NextResponse.json(
         { message: 'Unauthorized - Admin access required' },
         { status: 403 }
       );
     }
-    
-    // Get all users from our database
+
+
     const users = await User.find();
     const syncResults = [];
-    
-    // For each user, get their email from Clerk and update it in our database
+
+
     for (const user of users) {
       try {
-        // Skip if user has no clerkId
+
         if (!user.clerkId) {
           syncResults.push({
             id: user._id,
@@ -60,15 +58,15 @@ export async function POST(request) {
           });
           continue;
         }
-        
-        // Get user from Clerk
+
+
         const clerkUser = await clerkClient.users.getUser(user.clerkId);
-        
-        // Get primary email
+
+
         const primaryEmail = clerkUser.emailAddresses.find(
           email => email.id === clerkUser.primaryEmailAddressId
         )?.emailAddress || clerkUser.emailAddresses[0]?.emailAddress;
-        
+
         if (!primaryEmail) {
           syncResults.push({
             id: user._id,
@@ -78,13 +76,13 @@ export async function POST(request) {
           });
           continue;
         }
-        
-        // Update user in our database
+
+
         await User.updateOne(
           { _id: user._id },
           { $set: { email: primaryEmail } }
         );
-        
+
         syncResults.push({
           id: user._id,
           clerkId: user.clerkId,
@@ -101,7 +99,7 @@ export async function POST(request) {
         });
       }
     }
-    
+
     // Return results
     return NextResponse.json({
       message: 'Email sync completed',

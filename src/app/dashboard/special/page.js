@@ -11,30 +11,29 @@ import Button from '../../../components/Button';
 import Card from '../../../components/Card';
 import ThemeToggle from '../../../components/ThemeToggle';
 
-// Fetcher function for SWR
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function SpecialDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('aid');
   const [userRole, setUserRole] = useState(null);
-  const [selectedRequest, setSelectedRequest] = useState(null); // For the popup modal
-  
-  // Fetch user role
+  const [selectedRequest, setSelectedRequest] = useState(null);
+
+
   useEffect(() => {
     const checkUserRole = async () => {
       try {
         const response = await fetch('/api/auth/me');
         const data = await response.json();
-        
+
         setUserRole(data.role);
-        
-        // Redirect if not a special user
+
+
         if (data.role !== 'special' && data.role !== 'admin') {
           router.push('/');
         }
-        
-        // If user has a profile_location, set it as the default selected region
+
+
         if (data.profile_location) {
           setSelectedRegion(data.profile_location);
         }
@@ -42,70 +41,70 @@ export default function SpecialDashboard() {
         console.error('Error fetching user role:', error);
       }
     };
-    
+
     checkUserRole();
   }, [router]);
 
-  // Fetch aid requests
+
   const { data: aidRequests, error: aidError, isLoading: aidLoading, mutate: refreshAidRequests } = useSWR(
     '/api/aid-requests/all?status=pending',
     fetcher
   );
-  
-  // Fetch approved aid requests assigned to this special user
-  // Now fetching all in-progress aid requests that are not completed
+
+
+
   const { data: approvedRequests, error: approvedError, isLoading: approvedLoading, mutate: refreshApproved } = useSWR(
     '/api/aid-requests/all?acceptedByMe=true',
     fetcher
   );
-  
-  // Fetch reported posts without region filtering 
+
+
   const { data: reportedPosts, error: reportsError, isLoading: reportsLoading, mutate: refreshReports } = useSWR(
     `/api/reports/all`,
     fetcher
   );
-  
-  // Handle aid request approval
+
+
   const handleApproveAid = async (requestId) => {
     try {
       const response = await fetch(`/api/aid-requests/${requestId}/approve`, {
         method: 'POST',
       });
-      
+
       if (!response.ok) {
         console.error('Error approving request:', await response.text());
       }
-      
+
       refreshAidRequests();
       setSelectedRequest(null); // Close the modal after action
     } catch (error) {
       console.error('Error approving aid request:', error);
     }
   };
-  
+
   // Handle aid request denial
   const handleDenyAid = async (requestId) => {
     try {
       const response = await fetch(`/api/aid-requests/${requestId}/deny`, {
         method: 'POST',
       });
-      
+
       if (!response.ok) {
         console.error('Error denying request:', await response.text());
       }
-      
+
       refreshAidRequests();
       setSelectedRequest(null); // Close the modal after action
     } catch (error) {
       console.error('Error denying aid request:', error);
     }
   };
-  
+
   // Handle opening the request detail modal
   const openRequestDetail = (request) => {
     setSelectedRequest(request);
   };
-  
+
   // Handle updating aid request status
   const handleUpdateAidStatus = async (requestId, status) => {
     try {
@@ -116,11 +115,11 @@ export default function SpecialDashboard() {
         },
         body: JSON.stringify({ status }),
       });
-      
+
       if (!response.ok) {
         console.error('Error updating request status:', await response.text());
       }
-      
+
       // Refresh both pending and approved requests to ensure UI stays updated
       refreshApproved();
       refreshAidRequests();
@@ -128,7 +127,7 @@ export default function SpecialDashboard() {
       console.error('Error updating aid request status:', error);
     }
   };
-  
+
   // Handle completing an aid request
   const handleCompleteAid = async (requestId) => {
     try {
@@ -139,11 +138,11 @@ export default function SpecialDashboard() {
         },
         body: JSON.stringify({ status: 'completed' }),
       });
-      
+
       if (!response.ok) {
         console.error('Error completing request:', await response.text());
       }
-      
+
       // Refresh both pending and approved requests
       refreshApproved();
       refreshAidRequests();
@@ -151,27 +150,27 @@ export default function SpecialDashboard() {
       console.error('Error completing aid request:', error);
     }
   };
-  
+
   // Handle marking reported post as safe
   const handleMarkSafe = async (reportId) => {
     try {
       await fetch(`/api/reports/${reportId}/safe`, {
         method: 'POST',
       });
-      
+
       refreshReports();
     } catch (error) {
       console.error('Error marking post as safe:', error);
     }
   };
-  
+
   // Handle removing reported post
   const handleRemovePost = async (postId) => {
     try {
       await fetch(`/api/posts/${postId}`, {
         method: 'DELETE',
       });
-      
+
       refreshReports();
     } catch (error) {
       console.error('Error removing post:', error);
@@ -191,17 +190,17 @@ export default function SpecialDashboard() {
           action: 'agree'
         }),
       });
-      
+
       if (!response.ok) {
         console.error('Error handling report:', await response.text());
       }
-      
+
       refreshReports();
     } catch (error) {
       console.error('Error handling report:', error);
     }
   };
-  
+
   const handleDisagreeWithReport = async (reportId) => {
     try {
       const response = await fetch('/api/reports/handle', {
@@ -214,17 +213,17 @@ export default function SpecialDashboard() {
           action: 'disagree'
         }),
       });
-      
+
       if (!response.ok) {
         console.error('Error handling report:', await response.text());
       }
-      
+
       refreshReports();
     } catch (error) {
       console.error('Error handling report:', error);
     }
   };
-  
+
   // If still checking role, show loading
   if (userRole === null) {
     return (
@@ -285,14 +284,14 @@ export default function SpecialDashboard() {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Aid Requests Tab */}
                 {activeTab === 'aid' && (
                   <div>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-semibold text-[#ededed]">Pending Aid Requests</h2>
                     </div>
-                    
+
                     {aidLoading ? (
                       <div className="flex justify-center items-center h-40">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
@@ -319,8 +318,8 @@ export default function SpecialDashboard() {
                           </thead>
                           <tbody className="bg-zinc-900 divide-y divide-zinc-800">
                             {aidRequests?.map((request) => (
-                              <tr 
-                                key={request._id} 
+                              <tr
+                                key={request._id}
                                 className={`hover:bg-zinc-800/50 cursor-pointer ${
                                   request.requesterRole === 'special' ? 'bg-purple-900/20' : ''
                                 }`}
@@ -373,7 +372,7 @@ export default function SpecialDashboard() {
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-semibold text-[#ededed]">Approved Aid Requests</h2>
                     </div>
-                    
+
                     {approvedLoading ? (
                       <div className="flex justify-center items-center h-40">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
@@ -400,8 +399,8 @@ export default function SpecialDashboard() {
                           </thead>
                           <tbody className="bg-zinc-900 divide-y divide-zinc-800">
                             {approvedRequests?.map((request) => (
-                              <tr 
-                                key={request._id} 
+                              <tr
+                                key={request._id}
                                 className={`hover:bg-zinc-800/50 ${
                                   request.requesterRole === 'special' ? 'bg-purple-900/20' : ''
                                 }`}
@@ -422,7 +421,7 @@ export default function SpecialDashboard() {
                                 </td>
                                 <td className="px-6 py-4 text-sm text-zinc-400">
                                   <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                    request.status === 'approved' 
+                                    request.status === 'approved'
                                       ? 'bg-green-900/30 text-green-300'
                                       : request.status === 'received'
                                       ? 'bg-blue-900/30 text-blue-300'
@@ -436,7 +435,7 @@ export default function SpecialDashboard() {
                                       ? 'bg-indigo-900/30 text-indigo-300'
                                       : 'bg-zinc-800 text-zinc-300'
                                   }`}>
-                                    {request.status === 'approved' ? 'Approved' : 
+                                    {request.status === 'approved' ? 'Approved' :
                                      request.status === 'received' ? 'Materials Received' :
                                      request.status === 'prepared' ? 'Aid Prepared' :
                                      request.status === 'shipped' ? 'Shipped' :
@@ -447,7 +446,7 @@ export default function SpecialDashboard() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                   <div className="flex items-center space-x-2">
-                                    <select 
+                                    <select
                                       className="bg-zinc-800 border border-zinc-700 rounded p-1.5 text-sm text-[#ededed]"
                                       onChange={(e) => handleUpdateAidStatus(request._id, e.target.value)}
                                       value={request.status}
@@ -458,14 +457,14 @@ export default function SpecialDashboard() {
                                       <option value="shipped">Shipped</option>
                                       <option value="delivered">Delivered</option>
                                     </select>
-                                    
+
                                     <Button
                                       onClick={() => handleUpdateAidStatus(request._id, request.status)}
                                       className="bg-zinc-700 hover:bg-zinc-600 text-[#ededed] text-xs py-1 px-2"
                                     >
                                       Update
                                     </Button>
-                                    
+
                                     <Button
                                       onClick={() => handleCompleteAid(request._id)}
                                       className="bg-purple-900/50 hover:bg-purple-900/70 text-[#ededed] text-xs py-1 px-2"
@@ -482,14 +481,14 @@ export default function SpecialDashboard() {
                     )}
                   </div>
                 )}
-                
+
                 {/* Reported Posts Tab */}
                 {activeTab === 'reports' && (
                   <div>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-semibold text-[#ededed]">Reported Posts</h2>
                     </div>
-                    
+
                     {reportsLoading ? (
                       <div className="flex justify-center items-center h-40">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
@@ -516,9 +515,9 @@ export default function SpecialDashboard() {
                                 <div>
                                   <p className="text-sm font-medium text-[#ededed] mb-2">
                                     Reported by {
-                                      typeof report.reporter === 'object' 
-                                        ? (report.reporter?.firstName 
-                                           ? `${report.reporter.firstName} ${report.reporter.lastName || ''}`.trim() 
+                                      typeof report.reporter === 'object'
+                                        ? (report.reporter?.firstName
+                                           ? `${report.reporter.firstName} ${report.reporter.lastName || ''}`.trim()
                                            : report.reporter?.username || report.reporter?.clerkId || 'Anonymous')
                                         : (report.reporter || 'Anonymous')
                                     } • {report.content}
@@ -526,7 +525,7 @@ export default function SpecialDashboard() {
                                   <p className="text-sm text-zinc-400 mb-6">
                                     Reported on {format(new Date(report.createdAt), 'MMM d, yyyy')}
                                   </p>
-                                  
+
                                   <div className="bg-zinc-800 rounded-lg p-6 mb-6">
                                     <p className="text-[#ededed] line-clamp-3">{report.post?.content}</p>
                                     <p className="text-xs text-zinc-400 mt-3">
@@ -539,7 +538,7 @@ export default function SpecialDashboard() {
                                       }
                                     </p>
                                   </div>
-                                  
+
                                   {report.post?.fakeScore > 0 && (
                                     <div className="bg-orange-900/20 text-orange-300 p-3 rounded text-sm mb-4">
                                       ⚠️ Fake content score: {report.post.fakeScore}/10
@@ -547,16 +546,16 @@ export default function SpecialDashboard() {
                                   )}
                                 </div>
                               </div>
-                              
+
                               <div className="flex space-x-3 mt-2">
-                                <Button 
+                                <Button
                                   variant="secondary"
                                   className="bg-green-900/30 text-green-300 hover:bg-green-900/50"
                                   onClick={() => handleDisagreeWithReport(report._id)}
                                 >
                                   Dismiss Report
                                 </Button>
-                                <Button 
+                                <Button
                                   className="bg-red-900/50 hover:bg-red-900/70 text-[#ededed]"
                                   onClick={() => handleAgreeWithReport(report._id)}
                                 >
@@ -570,14 +569,14 @@ export default function SpecialDashboard() {
                     )}
                   </div>
                 )}
-                
+
                 {/* Aid Request Detail Modal */}
                 {selectedRequest && (
                   <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
                     <div className="bg-zinc-900 border border-zinc-800 rounded-lg max-w-2xl w-full overflow-hidden shadow-xl p-6 max-h-[90vh] overflow-y-auto">
                       {/* Close button */}
                       <div className="flex justify-end mb-4">
-                        <button 
+                        <button
                           onClick={() => setSelectedRequest(null)}
                           className="text-zinc-400 hover:text-white p-1 rounded-full"
                         >
@@ -586,9 +585,9 @@ export default function SpecialDashboard() {
                           </svg>
                         </button>
                       </div>
-                      
+
                       <h2 className="text-xl font-semibold mb-4 text-[#ededed]">Aid Request Details</h2>
-                      
+
                       <div className="bg-zinc-800 p-6 rounded-lg mb-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
@@ -601,10 +600,10 @@ export default function SpecialDashboard() {
                                 </span>
                               )}
                             </p>
-                            
+
                             <p className="text-sm font-medium text-zinc-400 mb-1">Requested On</p>
                             <p className="text-[#ededed] mb-4">{format(new Date(selectedRequest.createdAt), 'PPP')}</p>
-                            
+
                             <p className="text-sm font-medium text-zinc-400 mb-1">Status</p>
                             <p className="text-[#ededed] mb-4">
                               <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-900/30 text-yellow-300">
@@ -612,16 +611,16 @@ export default function SpecialDashboard() {
                               </span>
                             </p>
                           </div>
-                          
+
                           <div>
                             <p className="text-sm font-medium text-zinc-400 mb-1">Requesters</p>
                             <p className="text-[#ededed] mb-4">{selectedRequest.requesters?.length || 1} people</p>
-                            
+
                             {selectedRequest.requesters && selectedRequest.requesters[0] && (
                               <>
                                 <p className="text-sm font-medium text-zinc-400 mb-1">Requester Details</p>
                                 <p className="text-[#ededed] mb-4">
-                                  {selectedRequest.requesters[0].firstName 
+                                  {selectedRequest.requesters[0].firstName
                                     ? `${selectedRequest.requesters[0].firstName} ${selectedRequest.requesters[0].lastName || ''}`
                                     : selectedRequest.requesters[0].email || 'Anonymous'}
                                 </p>
@@ -629,7 +628,7 @@ export default function SpecialDashboard() {
                             )}
                           </div>
                         </div>
-                        
+
                         <div className="mt-4">
                           <p className="text-sm font-medium text-zinc-400 mb-2">Additional Information</p>
                           <p className="text-[#ededed] bg-zinc-900 p-4 rounded-md">
@@ -637,7 +636,7 @@ export default function SpecialDashboard() {
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="flex justify-end space-x-4">
                         <Button
                           variant="secondary"

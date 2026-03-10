@@ -1,17 +1,16 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-// Only import the news processor initializer in a controlled way
 let initializeNewsProcessor;
 if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
   try {
     const newsSchedulerModule = require('./utils/newsScheduler');
     initializeNewsProcessor = newsSchedulerModule.initializeNewsProcessor;
-    
-    // Initialize news processor only in Node.js environment (not Edge runtime)
-    if (process.env.HUGGINGFACE_API_KEY && process.env.GEMINI_API_KEY) {
+
+
+    if (process.env.GEMINI_API_KEY) {
       console.log('Attempting to initialize news processor...');
-      // Delay initialization to ensure models are registered
+
       setTimeout(() => {
         try {
           initializeNewsProcessor();
@@ -28,9 +27,8 @@ if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
   }
 }
 
-// Configure which routes require authentication
 const isAuthRoute = createRouteMatcher([
-  // Protected API routes
+
   '/api/posts',
   '/api/posts/(.*)',
   '/api/aid-requests',
@@ -39,7 +37,7 @@ const isAuthRoute = createRouteMatcher([
   '/api/reports/(.*)',
   '/api/users/(.*)',
   '/api/news-tracker/(.*)',
-  // Protected app routes
+
   '/create-post(.*)',
   '/apply-aid(.*)',
   '/dashboard/(.*)',
@@ -47,27 +45,27 @@ const isAuthRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Handle CORS preflight requests
+
   if (req.method === 'OPTIONS') {
     return NextResponse.next();
   }
-  
-  // Sync user data with our database when authenticated
+
+
   if (auth.userId && !req.nextUrl.pathname.startsWith('/api/users')) {
     try {
-      // Get complete user data from auth
+
       const userData = {
         firstName: auth.user?.firstName || '',
         lastName: auth.user?.lastName || '',
         username: auth.user?.username || '',
         profileImageUrl: auth.user?.imageUrl || '',
-        // Make sure to include email data
+
         email: auth.user?.emailAddresses?.find(
           email => email.id === auth.user.primaryEmailAddressId
         )?.emailAddress || auth.user?.emailAddresses?.[0]?.emailAddress || ''
       };
-      
-      // Call our API to sync user data
+
+
       await fetch(`${req.nextUrl.origin}/api/users`, {
         method: 'POST',
         headers: {
@@ -81,7 +79,7 @@ export default clerkMiddleware(async (auth, req) => {
       // Don't block the request if sync fails
     }
   }
-  
+
   // Return response from middleware
   return NextResponse.next();
 });

@@ -5,8 +5,8 @@ import { Moon, Sun } from 'lucide-react';
 const ThemeToggle = () => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  
-  // Fix for hydration mismatch
+
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -31,8 +31,8 @@ const ThemeToggle = () => {
     <button
       onClick={toggleTheme}
       className={`p-2 rounded-full transition-colors ${
-        theme === 'dark' 
-          ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' 
+        theme === 'dark'
+          ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
           : 'bg-zinc-200 text-zinc-700 hover:bg-zinc-300'
       }`}
       aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}

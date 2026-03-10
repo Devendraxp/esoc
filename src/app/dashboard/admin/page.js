@@ -11,19 +11,18 @@ import Button from '../../../components/Button';
 import Card from '../../../components/Card';
 import ThemeToggle from '../../../components/ThemeToggle';
 
-// Fetcher function for SWR with timeout
 const fetcher = async (url) => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-  
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
   try {
     const response = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
-    
+
     if (!response.ok) {
       throw new Error(`API request failed with status ${response.status}`);
     }
-    
+
     return response.json();
   } catch (error) {
     console.error(`Error fetching from ${url}:`, error);
@@ -38,32 +37,32 @@ export default function AdminDashboard() {
   const [selectedUpgradeRequest, setSelectedUpgradeRequest] = useState(null);
   const [upgradeRequestTab, setUpgradeRequestTab] = useState('pending');
   const detailCardRef = useRef(null);
-  
+
   // Fetch user role
   useEffect(() => {
     const checkUserRole = async () => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
+
         const response = await fetch('/api/auth/me', { signal: controller.signal });
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
           console.error('Error response from /api/auth/me:', response.status);
           setUserRole('unknown');
           return;
         }
-        
+
         const data = await response.json();
         setUserRole(data.role);
-        
+
         // Redirect if not an admin
         if (data.role !== 'admin') {
           router.push('/');
           return;
         }
-        
+
         // If user is admin, trigger email sync in background
         try {
           await fetch('/api/users/sync-emails', {
@@ -80,7 +79,7 @@ export default function AdminDashboard() {
         setUserRole('unknown');
       }
     };
-    
+
     checkUserRole();
   }, [router]);
 
@@ -91,7 +90,7 @@ export default function AdminDashboard() {
         setSelectedUpgradeRequest(null);
       }
     }
-    
+
     // Add event listener for mousedown
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
@@ -105,13 +104,13 @@ export default function AdminDashboard() {
     '/api/users',
     fetcher
   );
-  
+
   // Fetch all aid requests
   const { data: aidRequests, error: aidError, isLoading: aidLoading, mutate: refreshAidRequests } = useSWR(
     '/api/aid-requests/all',
     fetcher
   );
-  
+
   // Handle report actions
   const handleAgreeWithReport = async (reportId) => {
     try {
@@ -125,18 +124,18 @@ export default function AdminDashboard() {
           action: 'agree'
         }),
       });
-      
+
       if (!response.ok) {
         console.error('Error handling report:', await response.text());
       }
-      
+
       // Refresh reports after action
       mutateReports();
     } catch (error) {
       console.error('Error handling report:', error);
     }
   };
-  
+
   const handleDisagreeWithReport = async (reportId) => {
     try {
       const response = await fetch('/api/reports/handle', {
@@ -149,11 +148,11 @@ export default function AdminDashboard() {
           action: 'disagree'
         }),
       });
-      
+
       if (!response.ok) {
         console.error('Error handling report:', await response.text());
       }
-      
+
       // Refresh reports after action
       mutateReports();
     } catch (error) {
@@ -166,13 +165,13 @@ export default function AdminDashboard() {
     '/api/reports/all',
     fetcher
   );
-  
+
   // Fetch upgrade requests based on current tab
   const { data: upgradeRequests, error: upgradeError, isLoading: upgradeLoading, mutate: refreshUpgradeRequests } = useSWR(
     `/api/users/upgrade-requests?status=${upgradeRequestTab}`,
     fetcher
   );
-  
+
   // Handle promote user to special role
   const handlePromoteUser = async (userId) => {
     try {
@@ -183,7 +182,7 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify({ role: 'special' }),
       });
-      
+
       if (response.ok) {
         // Refresh data after successful promotion
         refreshUsers();
@@ -197,31 +196,31 @@ export default function AdminDashboard() {
       console.error('Error promoting user:', error);
     }
   };
-  
+
   // Handle demote user to regular role
   const handleDemoteUser = async (userId) => {
     try {
       await fetch(`/api/users/${userId}/demote`, {
         method: 'POST',
       });
-      
+
       refreshUsers();
     } catch (error) {
       console.error('Error demoting user:', error);
     }
   };
-  
+
   // Handle delete user
   const handleDeleteUser = async (userId) => {
     if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       return;
     }
-    
+
     try {
       await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
       });
-      
+
       refreshUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -239,7 +238,7 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify({ role: 'special' }),
       });
-      
+
       if (response.ok) {
         // Next, update the upgrade request status directly with PATCH request
         const updateResponse = await fetch(`/api/users/${userId}`, {
@@ -252,11 +251,11 @@ export default function AdminDashboard() {
             'upgradeRequest.reviewedAt': new Date()
           }),
         });
-        
+
         if (!updateResponse.ok) {
           console.error('Failed to update upgrade request status, server returned:', updateResponse.status);
         }
-        
+
         // Refresh data after successful approval
         refreshUpgradeRequests();
         refreshUsers();
@@ -275,7 +274,7 @@ export default function AdminDashboard() {
     if (!confirm('Are you sure you want to deny this upgrade request?')) {
       return;
     }
-    
+
     try {
       // Update the status to rejected using the user update endpoint
       const response = await fetch(`/api/users/${userId}`, {
@@ -288,7 +287,7 @@ export default function AdminDashboard() {
           'upgradeRequest.reviewedAt': new Date()
         }),
       });
-      
+
       if (!response.ok) {
         console.error('Failed to deny upgrade request, server returned:', response.status);
       } else {
@@ -311,7 +310,7 @@ export default function AdminDashboard() {
   const closeRequestDetail = () => {
     setSelectedUpgradeRequest(null);
   };
-  
+
   // If still checking role, show loading
   if (userRole === null) {
     return (
@@ -382,14 +381,14 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* User Management Section */}
                 {activeSection === 'users' && (
                   <div>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-semibold text-[#ededed]">User Management</h2>
                     </div>
-                    
+
                     {usersLoading ? (
                       <div className="flex justify-center items-center h-40">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
@@ -484,7 +483,7 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 )}
-                
+
                 {/* Upgrade Requests Section */}
                 {activeSection === 'upgrade' && (
                   <div>
@@ -527,7 +526,7 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
-                    
+
                     {upgradeLoading ? (
                       <div className="flex justify-center items-center h-40">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
@@ -560,8 +559,8 @@ export default function AdminDashboard() {
                           </thead>
                           <tbody className="bg-zinc-900 divide-y divide-zinc-800">
                             {upgradeRequests.map((request) => (
-                              <tr 
-                                key={request.clerkId || request._id} 
+                              <tr
+                                key={request.clerkId || request._id}
                                 className="hover:bg-zinc-800/50 cursor-pointer"
                                 onClick={() => openRequestDetail(request)}
                               >
@@ -607,8 +606,8 @@ export default function AdminDashboard() {
                                 )}
                                 {upgradeRequestTab !== 'pending' && (
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
-                                    {request.upgradeRequest?.reviewedAt ? 
-                                      format(new Date(request.upgradeRequest.reviewedAt), 'MMM d, yyyy') : 
+                                    {request.upgradeRequest?.reviewedAt ?
+                                      format(new Date(request.upgradeRequest.reviewedAt), 'MMM d, yyyy') :
                                       'Unknown'}
                                   </td>
                                 )}
@@ -622,12 +621,12 @@ export default function AdminDashboard() {
                     {/* Upgrade Request Detail Modal */}
                     {selectedUpgradeRequest && (
                       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-                        <div 
+                        <div
                           ref={detailCardRef}
                           className="bg-zinc-900 border border-zinc-800 rounded-lg max-w-xl w-full overflow-hidden shadow-xl relative max-h-[90vh] overflow-y-auto"
                         >
                           {/* Close button */}
-                          <button 
+                          <button
                             onClick={closeRequestDetail}
                             className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1"
                           >
@@ -640,7 +639,7 @@ export default function AdminDashboard() {
                             <h3 className="text-xl font-semibold mb-4 text-[#ededed]">
                               Upgrade Request Details
                             </h3>
-                            
+
                             <div className="space-y-4 mb-6">
                               <div>
                                 <p className="text-sm font-medium text-zinc-400">Organization/Department</p>
@@ -648,7 +647,7 @@ export default function AdminDashboard() {
                                   {selectedUpgradeRequest.upgradeRequest?.organization || 'Unknown Organization'}
                                 </p>
                               </div>
-                              
+
                               <div>
                                 <p className="text-sm font-medium text-zinc-400">Full Name</p>
                                 <p className="text-[#ededed]">
@@ -689,7 +688,7 @@ export default function AdminDashboard() {
                               <div>
                                 <p className="text-sm font-medium text-zinc-400">Requested On</p>
                                 <p className="text-[#ededed]">
-                                  {selectedUpgradeRequest.upgradeRequest?.requestedAt 
+                                  {selectedUpgradeRequest.upgradeRequest?.requestedAt
                                     ? format(new Date(selectedUpgradeRequest.upgradeRequest.requestedAt), 'PPP')
                                     : 'Unknown date'}
                                 </p>
@@ -740,14 +739,14 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 )}
-                
+
                 {/* Aid Requests Section */}
                 {activeSection === 'aid' && (
                   <div>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-semibold text-[#ededed]">All Aid Requests</h2>
                     </div>
-                    
+
                     {aidLoading ? (
                       <div className="flex justify-center items-center h-40">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
@@ -810,14 +809,14 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 )}
-                
+
                 {/* Reports Section */}
                 {activeSection === 'reports' && (
                   <div>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-semibold text-[#ededed]">All Reported Posts</h2>
                     </div>
-                    
+
                     {reportsLoading ? (
                       <div className="flex justify-center items-center h-40">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ededed]"></div>
@@ -835,7 +834,7 @@ export default function AdminDashboard() {
                         {reports.map((report) => (
                           <Card key={report._id} className={`border ${
                             report.status === 'agreed' || report.status === 'disagreed'
-                              ? 'border-green-800' 
+                              ? 'border-green-800'
                               : 'border-yellow-800'
                           }`}>
                             <div className="flex flex-col">
@@ -870,9 +869,9 @@ export default function AdminDashboard() {
                                   </div>
                                   <p className="text-sm text-zinc-400">
                                     Reported on {format(new Date(report.createdAt), 'MMM d, yyyy')} by {
-                                      typeof report.reporter === 'object' 
-                                        ? (report.reporter?.firstName 
-                                           ? `${report.reporter.firstName} ${report.reporter.lastName || ''}`.trim() 
+                                      typeof report.reporter === 'object'
+                                        ? (report.reporter?.firstName
+                                           ? `${report.reporter.firstName} ${report.reporter.lastName || ''}`.trim()
                                            : report.reporter?.username || report.reporter?.clerkId || 'Anonymous')
                                         : (report.reporter || 'Anonymous')
                                     }
@@ -881,12 +880,12 @@ export default function AdminDashboard() {
                                     <span className="font-medium">Reason:</span> {report.content}
                                   </p>
                                 </div>
-                                
+
                                 {report.handledBy && (
                                   <div className="text-sm text-zinc-400">
                                     <span className="font-medium">Handled by:</span> {
                                       typeof report.handledBy === 'object'
-                                        ? (report.handledBy?.firstName 
+                                        ? (report.handledBy?.firstName
                                            ? `${report.handledBy.firstName} ${report.handledBy.lastName || ''}`.trim()
                                            : report.handledBy?.username || report.handledBy?.clerkId || 'Unknown')
                                         : report.handledBy
@@ -894,7 +893,7 @@ export default function AdminDashboard() {
                                   </div>
                                 )}
                               </div>
-                              
+
                               <div className="bg-zinc-800 rounded-lg p-6 my-6">
                                 <p className="text-[#ededed]">{report.post?.content}</p>
                                 <div className="flex justify-between items-center mt-3">
@@ -914,17 +913,17 @@ export default function AdminDashboard() {
                                   )}
                                 </div>
                               </div>
-                              
+
                               {report.status === 'pending' && (
                                 <div className="flex justify-end space-x-3">
-                                  <Button 
+                                  <Button
                                     variant="secondary"
                                     className="bg-green-900/30 text-green-300 hover:bg-green-900/50"
                                     onClick={() => handleDisagreeWithReport(report._id)}
                                   >
                                     Dismiss Report
                                   </Button>
-                                  <Button 
+                                  <Button
                                     className="bg-red-900/50 hover:bg-red-900/70 text-[#ededed]"
                                     onClick={() => handleAgreeWithReport(report._id)}
                                   >

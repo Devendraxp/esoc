@@ -31,7 +31,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    // Don't set index:true here since we use UserSchema.index() below
+
   },
   username: {
     type: String
@@ -71,10 +71,6 @@ const UserSchema = new mongoose.Schema({
   upgradeRequest: UpgradeRequestSchema
 }, { timestamps: true });
 
-// Create index on clerkId for faster lookups
-UserSchema.index({ clerkId: 1 });
-
-// Check if model exists before creating it (for hot reloading in Next.js)
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 export default User;

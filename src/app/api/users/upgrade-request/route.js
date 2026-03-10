@@ -3,14 +3,13 @@ import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
 import User from '../../../../models/User';
 
-// Database connection function
 async function connectToDatabase() {
   if (mongoose.connection.readyState >= 1) {
     return;
   }
-  
+
   const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/esoc-app';
-  
+
   try {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
@@ -22,38 +21,38 @@ async function connectToDatabase() {
 export async function POST(request) {
   try {
     const { userId } = getAuth(request);
-    
+
     if (!userId) {
       return NextResponse.json(
         { message: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
     const { organization, reason } = await request.json();
-    
+
     if (!organization || organization.trim() === '') {
       return NextResponse.json(
         { message: 'Organization name is required' },
         { status: 400 }
       );
     }
-    
+
     await connectToDatabase();
-    
-    // Find the user
+
+
     let user = await User.findOne({ clerkId: userId });
-    
-    // If user doesn't exist, create a new user record
+
+
     if (!user) {
       try {
-        // Create a basic user record with Clerk ID
+
         user = new User({
           clerkId: userId,
           role: 'normal',
           joinedAt: new Date()
         });
-        
+
         await user.save();
         console.log(`Created new user record for clerkId: ${userId}`);
       } catch (createError) {
@@ -64,7 +63,7 @@ export async function POST(request) {
         );
       }
     }
-    
+
     // Check if user is already special or admin
     if (user.role === 'special' || user.role === 'admin') {
       return NextResponse.json(
@@ -72,7 +71,7 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-    
+
     // Check if user already has a pending upgrade request
     if (user.upgradeRequest && user.upgradeRequest.status === 'pending') {
       return NextResponse.json(
@@ -80,7 +79,7 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-    
+
     // Create upgrade request
     user.upgradeRequest = {
       organization: organization.trim(),
@@ -88,9 +87,9 @@ export async function POST(request) {
       status: 'pending',
       requestedAt: new Date()
     };
-    
+
     await user.save();
-    
+
     return NextResponse.json({
       message: 'Upgrade request submitted successfully',
       upgradeRequest: user.upgradeRequest
@@ -108,26 +107,26 @@ export async function POST(request) {
 export async function GET(request) {
   try {
     const { userId } = getAuth(request);
-    
+
     if (!userId) {
       return NextResponse.json(
         { message: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
     await connectToDatabase();
-    
+
     // Find the user
     const user = await User.findOne({ clerkId: userId });
-    
+
     if (!user) {
       return NextResponse.json(
         { message: 'User not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json({
       upgradeRequest: user.upgradeRequest || null
     });

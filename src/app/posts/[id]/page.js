@@ -16,35 +16,34 @@ import ThemeToggle from '../../../components/ThemeToggle';
 import ImageSlider from '../../../components/ImageSlider';
 import ReportPostModal from '../../../components/reports/ReportPostModal';
 
-// Fetcher function for SWR
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function PostDetail({ params }) {
   const router = useRouter();
-  // Unwrap params using React.use() to fix the warning
+
   const unwrappedParams = React.use(params);
   const id = unwrappedParams.id;
   const { isSignedIn, user } = useUser();
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  
-  // Fix for hydration mismatch
+
+
   useEffect(() => {
     setMounted(true);
   }, []);
-  
-  // State for new comment
+
+
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authorDetails, setAuthorDetails] = useState(null);
   const [inputError, setInputError] = useState(false);
-  const [userRole, setUserRole] = useState(null); // Add userRole state
+  const [userRole, setUserRole] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
-  
-  // For optimistic UI updates
+
+
   const [optimisticPost, setOptimisticPost] = useState(null);
 
-  // Theme-aware style classes
+
   const bgClass = theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50';
   const textClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-800';
   const secondaryTextClass = theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600';
@@ -54,12 +53,12 @@ export default function PostDetail({ params }) {
   const spinnerClass = theme === 'dark' ? 'border-[#ededed]' : 'border-zinc-700';
   const cardEmptyClass = theme === 'dark' ? 'bg-zinc-800/30 text-zinc-300 border-zinc-700' : 'bg-gray-100 text-gray-600 border-gray-200';
 
-  // SWR for real-time updates
+
   const { data: post, error: postError, isLoading: postLoading } = useSWR(
     `/api/posts/${id}`,
     fetcher
   );
-  
+
   // Fetch current user's role
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -75,26 +74,26 @@ export default function PostDetail({ params }) {
         }
       }
     };
-    
+
     fetchUserRole();
   }, [isSignedIn]);
-  
+
   // Update optimistic post when actual post data changes
   useEffect(() => {
     if (post) {
       setOptimisticPost(post);
     }
   }, [post]);
-  
+
   // Check if author is special or admin
-  const isSpecialOrAdmin = (authorDetails?.role === 'special' || authorDetails?.role === 'admin') || 
+  const isSpecialOrAdmin = (authorDetails?.role === 'special' || authorDetails?.role === 'admin') ||
                           (post?.author?.role === 'special' || post?.author?.role === 'admin');
-  
+
   const { data: comments, error: commentsError, isLoading: commentsLoading } = useSWR(
     `/api/posts/${id}/comments`,
     fetcher
   );
-  
+
   // Fetch author details when post loads
   useEffect(() => {
     if (post?.author?.clerkId) {
@@ -109,7 +108,7 @@ export default function PostDetail({ params }) {
           console.error('Error fetching author details:', error);
         }
       };
-      
+
       fetchAuthor();
     }
   }, [post]);
@@ -120,15 +119,15 @@ export default function PostDetail({ params }) {
       alert('Please sign in to like posts');
       return;
     }
-    
+
     try {
       // Optimistic UI update
       const userId = user.id;
       const alreadyLiked = optimisticPost?.likes?.includes(userId);
-      
+
       // Create a copy for optimistic update
       const updatedPost = { ...optimisticPost };
-      
+
       if (alreadyLiked) {
         // Remove like
         updatedPost.likes = updatedPost.likes.filter(id => id !== userId);
@@ -139,14 +138,14 @@ export default function PostDetail({ params }) {
           updatedPost.dislikes = updatedPost.dislikes.filter(id => id !== userId);
         }
       }
-      
+
       // Update UI immediately
       setOptimisticPost(updatedPost);
 
       await fetch(`/api/posts/${id}/like`, {
         method: 'POST',
       });
-      
+
       // Revalidate post data
       mutate(`/api/posts/${id}`);
     } catch (error) {
@@ -162,15 +161,15 @@ export default function PostDetail({ params }) {
       alert('Please sign in to dislike posts');
       return;
     }
-    
+
     try {
       // Optimistic UI update
       const userId = user.id;
       const alreadyDisliked = optimisticPost?.dislikes?.includes(userId);
-      
+
       // Create a copy for optimistic update
       const updatedPost = { ...optimisticPost };
-      
+
       if (alreadyDisliked) {
         // Remove dislike
         updatedPost.dislikes = updatedPost.dislikes.filter(id => id !== userId);
@@ -181,14 +180,14 @@ export default function PostDetail({ params }) {
           updatedPost.likes = updatedPost.likes.filter(id => id !== userId);
         }
       }
-      
+
       // Update UI immediately
       setOptimisticPost(updatedPost);
 
       await fetch(`/api/posts/${id}/dislike`, {
         method: 'POST',
       });
-      
+
       // Revalidate post data
       mutate(`/api/posts/${id}`);
     } catch (error) {
@@ -204,11 +203,11 @@ export default function PostDetail({ params }) {
       alert('Please sign in to report posts');
       return;
     }
-    
+
     // Open the report modal instead of showing a browser prompt
     setShowReportModal(true);
   };
-  
+
   // Handle closing report modal
   const closeReportModal = () => {
     setShowReportModal(false);
@@ -217,20 +216,20 @@ export default function PostDetail({ params }) {
   // Handle submit comment
   const handleSubmitComment = async (e) => {
     e.preventDefault();
-    
+
     if (!isSignedIn) {
       alert('Please sign in to comment');
       return;
     }
-    
+
     if (!commentText.trim()) {
       setInputError(true);
       return;
     }
-    
+
     setInputError(false);
     setIsSubmitting(true);
-    
+
     try {
       await fetch(`/api/posts/${id}/comments`, {
         method: 'POST',
@@ -239,7 +238,7 @@ export default function PostDetail({ params }) {
         },
         body: JSON.stringify({ content: commentText }),
       });
-      
+
       // Clear input and revalidate comments
       setCommentText('');
       mutate(`/api/posts/${id}/comments`);
@@ -253,55 +252,55 @@ export default function PostDetail({ params }) {
   // Media rendering helper
   const renderMedia = (media) => {
     if (!media || media.length === 0) return null;
-    
+
     // Filter media by type
     const images = media.filter(item => item.type === 'image');
     const videos = media.filter(item => item.type === 'video');
     const audios = media.filter(item => item.type === 'audio');
     const others = media.filter(item => item.type !== 'image' && item.type !== 'video' && item.type !== 'audio');
-    
+
     const audioBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100';
     const fileBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100';
-    
+
     return (
       <div className="mt-4 space-y-4">
         {/* Image slider - only show if there are images */}
         {images.length > 0 && (
-          <ImageSlider 
-            images={images.map(image => image.url)} 
-            height="h-64" 
+          <ImageSlider
+            images={images.map(image => image.url)}
+            height="h-64"
             objectFit="object-contain"
           />
         )}
-        
+
         {/* Videos */}
         {videos.map((video, index) => (
           <div key={`video-${index}`} className="rounded-lg overflow-hidden">
-            <video 
-              src={video.url} 
-              controls 
+            <video
+              src={video.url}
+              controls
               className="w-full"
             />
           </div>
         ))}
-        
+
         {/* Audio */}
         {audios.map((audio, index) => (
           <div key={`audio-${index}`} className={`${audioBgClass} p-4 rounded-lg`}>
-            <audio 
-              src={audio.url} 
-              controls 
+            <audio
+              src={audio.url}
+              controls
               className="w-full"
             />
           </div>
         ))}
-        
+
         {/* Other files */}
         {others.map((file, index) => (
           <div key={`file-${index}`} className={`${fileBgClass} p-4 rounded-lg`}>
-            <a 
-              href={file.url} 
-              target="_blank" 
+            <a
+              href={file.url}
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 hover:underline flex items-center"
             >
@@ -329,7 +328,7 @@ export default function PostDetail({ params }) {
 
   // Return early if not mounted (for hydration safety)
   if (!mounted) {
-    return null; 
+    return null;
   }
 
   if (postLoading) {
@@ -355,8 +354,8 @@ export default function PostDetail({ params }) {
           <div className="py-6">
             <Card className="bg-red-900/20 text-red-300 border border-red-800">
               <p className="text-lg">Error loading post. This post may not exist or has been removed.</p>
-              <Button 
-                className="mt-6" 
+              <Button
+                className="mt-6"
                 onClick={() => router.push('/')}
               >
                 Return to Home
@@ -378,7 +377,7 @@ export default function PostDetail({ params }) {
       {/* Main content - full width on mobile */}
       <div className="flex-1 md:ml-64 w-full">
         <header className={`sticky top-0 z-10 ${headerBgClass} border-b ${headerBorderClass} p-4 flex justify-between items-center`}>
-          <button 
+          <button
             onClick={() => router.back()}
             className={`${textClass} hover:opacity-80`}
           >
@@ -398,8 +397,8 @@ export default function PostDetail({ params }) {
                   {/* Author Profile Image */}
                   <div className={`relative flex-shrink-0 h-10 w-10 md:h-12 md:w-12 rounded-full overflow-hidden border ${borderClass}`}>
                     {authorDetails?.profileImageUrl ? (
-                      <Image 
-                        src={authorDetails.profileImageUrl} 
+                      <Image
+                        src={authorDetails.profileImageUrl}
                         alt={getAuthorDisplayName()}
                         fill
                         className="object-cover"
@@ -412,7 +411,7 @@ export default function PostDetail({ params }) {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex-1">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start">
                       <div>
@@ -426,7 +425,7 @@ export default function PostDetail({ params }) {
                         </p>
                         <div className="flex flex-wrap items-center text-xs text-zinc-400 space-x-2">
                           <span>{post.createdAt ? format(new Date(post.createdAt), 'MMM d, yyyy • h:mm a') : 'Unknown date'}</span>
-                          
+
                           {/* Post location */}
                           {post.location && (
                             <>
@@ -440,7 +439,7 @@ export default function PostDetail({ params }) {
                               </span>
                             </>
                           )}
-                          
+
                           {/* Author location (only show if post location is empty) */}
                           {!post.location && (authorDetails?.profile_location || post.author?.profile_location) && (
                             <>
@@ -456,14 +455,14 @@ export default function PostDetail({ params }) {
                           )}
                         </div>
                       </div>
-                      
+
                       {/* Action buttons - stacked on mobile, horizontal on desktop */}
                       <div className="flex flex-wrap gap-2 mt-4 md:mt-0 md:space-x-4">
-                        <button 
+                        <button
                           onClick={handleLike}
                           className={`flex items-center transition border rounded-md px-3 py-1.5 ${
-                            optimisticPost?.likes?.includes(user?.id) 
-                              ? 'text-green-400 bg-green-900/20 border-green-700' 
+                            optimisticPost?.likes?.includes(user?.id)
+                              ? 'text-green-400 bg-green-900/20 border-green-700'
                               : `${secondaryTextClass} border-${borderClass} hover:border-green-700 hover:bg-green-900/10`
                           }`}
                         >
@@ -472,12 +471,12 @@ export default function PostDetail({ params }) {
                           </svg>
                           <span>{optimisticPost?.likes?.length || 0}</span>
                         </button>
-                        
-                        <button 
+
+                        <button
                           onClick={handleDislike}
                           className={`flex items-center transition border rounded-md px-3 py-1.5 ${
-                            optimisticPost?.dislikes?.includes(user?.id) 
-                              ? 'text-red-400 bg-red-900/20 border-red-700' 
+                            optimisticPost?.dislikes?.includes(user?.id)
+                              ? 'text-red-400 bg-red-900/20 border-red-700'
                               : `${secondaryTextClass} border-${borderClass} hover:border-red-700 hover:bg-red-900/10`
                           }`}
                         >
@@ -486,8 +485,8 @@ export default function PostDetail({ params }) {
                           </svg>
                           <span>{optimisticPost?.dislikes?.length || 0}</span>
                         </button>
-                        
-                        <button 
+
+                        <button
                           onClick={handleReport}
                           className={`flex items-center transition border ${borderClass} hover:border-yellow-600 hover:bg-yellow-900/10 ${secondaryTextClass} hover:text-yellow-400 rounded-md px-3 py-1.5`}
                         >
@@ -496,10 +495,10 @@ export default function PostDetail({ params }) {
                           </svg>
                           <span>Report</span>
                         </button>
-                        
+
                         {/* Special user direct delete button */}
                         {(userRole === 'special' || userRole === 'admin') && (
-                          <button 
+                          <button
                             onClick={() => {
                               if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
                                 fetch(`/api/posts/${id}/delete`, {
@@ -532,10 +531,10 @@ export default function PostDetail({ params }) {
               </div>
 
               <p className={`${textClass} whitespace-pre-wrap mb-6`}>{post.content}</p>
-              
+
               {/* Update media rendering for better mobile responsiveness */}
               {renderMedia && renderMedia(post.media)}
-              
+
               {/* Fake Score indicator for admin/special users */}
               {post.fakeScore > 0 && (
                 <div className="mt-6 bg-yellow-900/20 text-yellow-300 p-4 rounded-md text-sm">
@@ -546,7 +545,7 @@ export default function PostDetail({ params }) {
 
             <div className="mb-8">
               <h2 className={`text-xl font-semibold mb-6 ${textClass}`}>Comments</h2>
-              
+
               {/* Comment input - improve mobile layout */}
               <form onSubmit={handleSubmitComment} className="mb-8">
                 <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0">
@@ -561,8 +560,8 @@ export default function PostDetail({ params }) {
                     placeholder="Add a comment..."
                     className={`flex-1 ${inputError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : ''}`}
                   />
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isSubmitting || !isSignedIn}
                     className={`sm:w-auto w-full border ${borderClass} rounded-md px-4 py-2 ${
                       isSubmitting ? 'bg-blue-900/30 text-blue-300' : 'bg-primary hover:bg-primary/80'
@@ -589,7 +588,7 @@ export default function PostDetail({ params }) {
                   <div className={`animate-spin rounded-full h-5 w-5 border-b-2 ${spinnerClass}`}></div>
                 </div>
               )}
-              
+
               {commentsError && (
                 <Card className="bg-red-900/20 text-red-300 border border-red-800 mb-6">
                   <p>Error loading comments. Please try again.</p>
@@ -607,7 +606,7 @@ export default function PostDetail({ params }) {
                   // Get the comment author's data - now directly from the author field
                   const commentAuthor = comment.author || { clerkId: 'Anonymous' };
                   const isSpecialOrAdminComment = commentAuthor.role === 'special' || commentAuthor.role === 'admin';
-                  
+
                   return (
                     <Card key={comment._id} className={`border hover:border-zinc-700 transition-colors ${
                       isSpecialOrAdminComment ? 'border-green-500 border-2' : borderClass
@@ -616,8 +615,8 @@ export default function PostDetail({ params }) {
                         {/* Comment Author Profile Image */}
                         <div className={`relative flex-shrink-0 h-8 w-8 md:h-10 md:w-10 rounded-full overflow-hidden border ${borderClass}`}>
                           {commentAuthor.profileImageUrl ? (
-                            <Image 
-                              src={commentAuthor.profileImageUrl} 
+                            <Image
+                              src={commentAuthor.profileImageUrl}
                               alt={commentAuthor.firstName || commentAuthor.username || 'User'}
                               fill
                               className="object-cover"
@@ -630,11 +629,11 @@ export default function PostDetail({ params }) {
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="flex-1 break-words">
                           <div className="flex justify-between">
                             <p className={`text-sm font-medium ${textClass} flex items-center`}>
-                              {commentAuthor.firstName && commentAuthor.lastName 
+                              {commentAuthor.firstName && commentAuthor.lastName
                                 ? `${commentAuthor.firstName} ${commentAuthor.lastName}`
                                 : commentAuthor.username || 'Anonymous'}
                               {isSpecialOrAdminComment && (
@@ -658,7 +657,7 @@ export default function PostDetail({ params }) {
           </div>
         </main>
       </div>
-      
+
       {/* Report Modal */}
       {showReportModal && (
         <ReportPostModal

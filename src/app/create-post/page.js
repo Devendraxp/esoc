@@ -16,16 +16,16 @@ export default function CreatePost() {
   const userId = isLoaded && isSignedIn ? user.id : null;
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  
-  // Fix for hydration mismatch
+
+
   useEffect(() => {
     setMounted(true);
   }, []);
-  
-  // State for user role
+
+
   const [userRole, setUserRole] = useState('normal');
-  
-  // Theme-aware style classes
+
+
   const bgClass = theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50';
   const textClass = theme === 'dark' ? 'text-zinc-100' : 'text-zinc-800';
   const secondaryTextClass = theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600';
@@ -37,20 +37,20 @@ export default function CreatePost() {
   const previewBgClass = theme === 'dark' ? 'bg-zinc-800' : 'bg-gray-100';
   const placeholderBgClass = theme === 'dark' ? 'bg-zinc-700' : 'bg-gray-200';
   const buttonHoverClass = theme === 'dark' ? 'hover:bg-zinc-700' : 'hover:bg-gray-200';
-  
-  // State for location suggestions
+
+
   const [location, setLocation] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  
-  // Handle location input and fetch suggestions from API
+
+
   const handleLocationChange = (e) => {
     const inputValue = e.target.value;
     setLocation(inputValue);
-    
+
     if (inputValue.length > 1) {
-      // Debounce the API call to avoid too many requests
+
       setIsLoadingSuggestions(true);
       fetchLocationSuggestions(inputValue);
     } else {
@@ -58,16 +58,16 @@ export default function CreatePost() {
       setShowSuggestions(false);
     }
   };
-  
-  // Fetch location suggestions from API
+
+
   const fetchLocationSuggestions = async (query) => {
     if (!query || query.length < 2) return;
-    
+
     try {
-      // Using the GeoDB Cities API from RapidAPI
-      // You can replace this with any location API of your choice
+
+
       const response = await fetch(`/api/location-suggestions?query=${encodeURIComponent(query)}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setLocationSuggestions(data);
@@ -85,13 +85,13 @@ export default function CreatePost() {
       setIsLoadingSuggestions(false);
     }
   };
-  
+
   // Select a suggestion
   const selectSuggestion = (suggestion) => {
     setLocation(suggestion);
     setShowSuggestions(false);
   };
-  
+
   // Fetch user role
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -105,22 +105,22 @@ export default function CreatePost() {
         console.error('Error fetching user role:', error);
       }
     };
-    
+
     fetchUserRole();
   }, []);
-  
+
   // State for form data
   const [content, setContent] = useState('');
   const [mediaFiles, setMediaFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Handle file selection
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     setMediaFiles(prevFiles => [...prevFiles, ...files]);
-    
+
     // Create preview URLs for images
     const newPreviewUrls = files.map(file => {
       const fileType = file.type.split('/')[0];
@@ -150,61 +150,61 @@ export default function CreatePost() {
         };
       }
     });
-    
+
     setPreviewUrls(prevUrls => [...prevUrls, ...newPreviewUrls]);
   };
-  
+
   // Remove a file from the selection
   const removeFile = (index) => {
     const newMediaFiles = [...mediaFiles];
     const newPreviewUrls = [...previewUrls];
-    
+
     // Revoke the URL to avoid memory leaks
     if (newPreviewUrls[index].url !== '#') {
       URL.revokeObjectURL(newPreviewUrls[index].url);
     }
-    
+
     newMediaFiles.splice(index, 1);
     newPreviewUrls.splice(index, 1);
-    
+
     setMediaFiles(newMediaFiles);
     setPreviewUrls(newPreviewUrls);
   };
-  
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!content.trim()) {
       setError('Post content is required');
       return;
     }
-    
+
     setIsSubmitting(true);
     setError('');
-    
+
     try {
       // Create FormData to upload files
       const formData = new FormData();
       formData.append('content', content);
       formData.append('location', location);
       mediaFiles.forEach(file => formData.append('media', file));
-      
+
       const response = await fetch('/api/posts', {
         method: 'POST',
         body: formData
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to create post');
       }
-      
+
       // Clear form after successful submission
       setContent('');
       setLocation('');
       setMediaFiles([]);
-      
+
       // Revoke all object URLs to avoid memory leaks
       previewUrls.forEach(item => {
         if (item.url !== '#') {
@@ -212,18 +212,18 @@ export default function CreatePost() {
         }
       });
       setPreviewUrls([]);
-      
+
       // Redirect to home page
       router.push('/');
       router.refresh();
-      
+
     } catch (error) {
       setError(error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   // Render file previews
   const renderPreviews = () => {
     return previewUrls.map((item, index) => (
@@ -237,8 +237,8 @@ export default function CreatePost() {
             </div>
           )}
           <div className="flex-1 truncate">{item.name}</div>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => removeFile(index)}
             className="ml-2 text-red-500 hover:text-red-400"
           >
@@ -248,15 +248,15 @@ export default function CreatePost() {
       </div>
     ));
   };
-  
+
   if (!mounted) {
     return null; // Prevent hydration issues
   }
-  
+
   return (
     <div className={`flex min-h-screen ${bgClass} ${textClass}`}>
       <Sidebar userRole={userRole} />
-      
+
       {/* Main content */}
       <div className="flex-1 md:ml-64 w-full">
         <header className={`sticky top-0 z-10 ${headerBgClass} border-b ${headerBorderClass} p-4 flex justify-between items-center`}>
@@ -273,7 +273,7 @@ export default function CreatePost() {
                     {error}
                   </div>
                 )}
-                
+
                 <form onSubmit={handleSubmit}>
                   <div className="mb-6">
                     <label htmlFor="content" className={`block mb-2 text-sm font-medium ${textClass}`}>
@@ -289,7 +289,7 @@ export default function CreatePost() {
                       required
                     />
                   </div>
-                  
+
                   <div className="mb-6">
                     <label htmlFor="location" className={`block mb-2 text-sm font-medium ${textClass}`}>
                       Location (Optional)
@@ -306,8 +306,8 @@ export default function CreatePost() {
                       {showSuggestions && (
                         <ul className={`absolute z-10 mt-1 w-full ${inputBgClass} border ${inputBorderClass} rounded-lg ${textClass}`}>
                           {locationSuggestions.map((suggestion, index) => (
-                            <li 
-                              key={index} 
+                            <li
+                              key={index}
                               className={`p-2 ${buttonHoverClass} cursor-pointer`}
                               onClick={() => selectSuggestion(suggestion)}
                             >
@@ -326,7 +326,7 @@ export default function CreatePost() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="mb-6">
                     <label className={`block mb-2 text-sm font-medium ${textClass}`}>
                       Add Media (Optional)
@@ -357,7 +357,7 @@ export default function CreatePost() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex justify-end">
                     <Button
                       type="submit"

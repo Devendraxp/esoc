@@ -11,8 +11,8 @@ import ThemeToggle from '../../components/ThemeToggle';
 
 export default function ApplyForAid() {
   const router = useRouter();
-  
-  // State for form data
+
+
   const [region, setRegion] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -21,14 +21,14 @@ export default function ApplyForAid() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  
-  // Handle location input and fetch suggestions
+
+
   const handleLocationChange = (e) => {
     const inputValue = e.target.value;
     setRegion(inputValue);
-    
+
     if (inputValue.length > 1) {
-      // Fetch location suggestions
+
       setIsLoadingSuggestions(true);
       fetchLocationSuggestions(inputValue);
     } else {
@@ -36,14 +36,14 @@ export default function ApplyForAid() {
       setShowSuggestions(false);
     }
   };
-  
-  // Fetch location suggestions from API
+
+
   const fetchLocationSuggestions = async (query) => {
     if (!query || query.length < 2) return;
-    
+
     try {
       const response = await fetch(`/api/location-suggestions?query=${encodeURIComponent(query)}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setLocationSuggestions(data);
@@ -61,7 +61,7 @@ export default function ApplyForAid() {
       setIsLoadingSuggestions(false);
     }
   };
-  
+
   // Select a suggestion
   const selectSuggestion = (suggestion) => {
     setRegion(suggestion);
@@ -71,16 +71,16 @@ export default function ApplyForAid() {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!region.trim()) {
       setError('Region is required');
       return;
     }
-    
+
     setIsSubmitting(true);
     setError('');
     setSuccessMessage('');
-    
+
     try {
       const response = await fetch('/api/aid-requests', {
         method: 'POST',
@@ -92,20 +92,20 @@ export default function ApplyForAid() {
           additionalInfo: additionalInfo.trim() || undefined,
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Failed to submit aid request');
       }
-      
+
       // Clear form after successful submission
       setRegion('');
       setAdditionalInfo('');
-      
+
       // Show success message
       setSuccessMessage('Your aid request has been submitted successfully. It will be reviewed by administrators shortly.');
-      
+
     } catch (error) {
       setError(error.message || 'Failed to submit aid request. Please try again.');
       console.error('Error submitting aid request:', error);
@@ -113,7 +113,7 @@ export default function ApplyForAid() {
       setIsSubmitting(false);
     }
   };
-  
+
   return (
     <>
       <SignedIn>
@@ -134,15 +134,15 @@ export default function ApplyForAid() {
                   <div className="mb-8">
                     <h2 className="text-xl font-semibold text-[#ededed] mb-3">Request Emergency Aid</h2>
                     <p className="text-zinc-400">
-                      Use this form to request emergency assistance for your region. Once submitted, 
+                      Use this form to request emergency assistance for your region. Once submitted,
                       your request will be reviewed by our team and processed accordingly.
                     </p>
                   </div>
-                  
+
                   {successMessage ? (
                     <div className="bg-green-900/20 text-green-300 p-6 rounded-md mb-6">
                       <p className="font-medium">{successMessage}</p>
-                      <Button 
+                      <Button
                         className="mt-6"
                         onClick={() => router.push('/')}
                       >
@@ -165,8 +165,8 @@ export default function ApplyForAid() {
                         {showSuggestions && (
                           <ul className="mt-2 bg-zinc-800 border border-zinc-700 rounded-md text-[#ededed]">
                             {locationSuggestions.map((suggestion, index) => (
-                              <li 
-                                key={index} 
+                              <li
+                                key={index}
                                 className="px-3 py-2 cursor-pointer hover:bg-zinc-700"
                                 onClick={() => selectSuggestion(suggestion)}
                               >
@@ -182,7 +182,7 @@ export default function ApplyForAid() {
                           Be as specific as possible (e.g., "East District, Building 4")
                         </p>
                       </div>
-                      
+
                       <div className="mb-8">
                         <label htmlFor="additionalInfo" className="block text-sm font-medium text-[#ededed] mb-2">
                           Additional Information
@@ -196,13 +196,13 @@ export default function ApplyForAid() {
                           placeholder="Describe your situation and specific needs (optional)"
                         />
                       </div>
-                      
+
                       {error && (
                         <div className="mb-6 bg-red-900/20 text-red-300 p-4 rounded-md text-sm">
                           {error}
                         </div>
                       )}
-                      
+
                       <div className="flex justify-end space-x-4 mt-8">
                         <Button
                           variant="secondary"
@@ -216,8 +216,8 @@ export default function ApplyForAid() {
                           type="submit"
                           disabled={isSubmitting}
                           className={`px-6 py-2 border rounded-md transition ${
-                            isSubmitting 
-                              ? 'bg-blue-900/30 text-blue-300 border-blue-700' 
+                            isSubmitting
+                              ? 'bg-blue-900/30 text-blue-300 border-blue-700'
                               : 'bg-green-900/20 text-green-400 border-green-700 hover:bg-green-800/30'
                           }`}
                         >

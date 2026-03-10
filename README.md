@@ -1,231 +1,156 @@
 # EKO
 
-[![GitHub stars](https://img.shields.io/github/stars/Devendraxp/esoc?style=social)](https://github.com/Devendraxp/esoc/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/Devendraxp/esoc)](https://github.com/Devendraxp/esoc/issues)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/Devendraxp/esoc)](https://github.com/Devendraxp/esoc/pulse)
+Community intelligence platform for crisis coordination. Turns local posts and discussions into searchable, AI-summarized situation reports with built-in misinformation detection, aid request tracking, and role-based moderation.
 
-> AI-powered news and community intelligence platform that transforms community conversations into actionable insights.
+Live at https://eko.devendrajat.com
 
-## 📚 Table of Contents
+## Stack
 
-1. [Overview](#-overview)
-2. [Hosted URL](#-hosted-url)
-3. [Tech Stack](#-tech-stack)
-4. [Project Structure](#-project-structure)
-5. [Prerequisites](#-prerequisites)
-6. [Local Setup](#-local-setup)
-7. [Running the App](#-running-the-app)
-8. [API Reference](#-api-reference)
-9. [Deployment](#-deployment)
-10. [Troubleshooting](#-troubleshooting)
-11. [Contributing](#-contributing)
-12. [Support & Contact](#-support--contact)
+- Next.js 15, React 19, Tailwind CSS 4
+- MongoDB with Mongoose
+- Clerk for auth and user sync
+- Cloudinary for media (images, video, audio)
+- Google Gemini for summaries and embeddings
+- Hugging Face BART-large-MNLI for misinformation detection
+- News API for external article aggregation
+- Open-Meteo for location autocomplete
 
-## 🔎 Overview
-
-EKO aggregates, analyzes, and contextualizes community-driven news and discussions using AI. Key features include:
-
-- AI-powered news aggregation and analysis.
-- Semantic search across conversations and documents.
-- Intelligent content moderation.
-- Community analytics and trending topics.
-- Multi-model AI integration (OpenAI, Gemini, Hugging Face).
-- Real-time posting and nested comment threads.
-- Media hosting with Cloudinary CDN.
-
-## 🌐 Hosted URL
-
-| Surface | URL |
-|---------|-----|
-| Production | https://eko.devendrajat.com |
-
-## 🛠 Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| Framework | Next.js 15 + React 19 |
-| Database | MongoDB 6.15 |
-| AI Services | OpenAI, Hugging Face, Gemini |
-| Authentication | Clerk |
-| Media Storage | Cloudinary |
-| Deployment | Vercel Edge Network |
-| Build Tool | Turbopack |
-| Styling | Tailwind CSS 4 |
-
-## 🗂 Project Structure
-
-```
-eko/
-├─ app/                     # Next.js application routes
-│  ├─ api/                  # API endpoints
-│  ├─ (auth)/               # Authentication pages
-│  ├─ (dashboard)/          # Dashboard interface
-│  └─ layout.tsx            # Root layout component
-├─ src/
-│  ├─ components/           # React components
-│  ├─ lib/                  # Utilities and helpers
-│  ├─ models/               # Database schemas
-│  ├─ services/             # External service integrations
-│  └─ types/                # TypeScript definitions
-├─ public/                  # Static assets
-└─ config/                  # Configuration files
-```
-
-## 🧰 Prerequisites
-
-- Node.js **18+**
-- MongoDB **6.0+**
-- npm, yarn, or pnpm
-
-## 💻 Local Setup
+## Run
 
 ```bash
-# Clone repository
 git clone https://github.com/Devendraxp/esoc.git
 cd esoc
-
-# Install dependencies
 npm install
-
-# Configure environment
-cp .env.example .env.local
-```
-
-### Environment Variables
-
-Create `.env.local` with the following:
-
-```bash
-# Database
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/eko
-
-# Authentication (Clerk)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_xxxxxxxx
-CLERK_SECRET_KEY=sk_live_xxxxxxxx
-
-# AI Services
-OPENAI_API_KEY=sk-proj-xxxxxxxx
-GEMINI_API_KEY=xxxxxxxx
-HUGGINGFACE_API_KEY=hf_xxxxxxxx
-
-# Media (Cloudinary)
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud
-CLOUDINARY_API_KEY=xxxxxxxx
-CLOUDINARY_API_SECRET=xxxxxxxx
-
-# Application
-NEXT_PUBLIC_APP_URL=https://eko.devendrajat.com
-NODE_ENV=production
-```
-
-## ▶️ Running the App
-
-```bash
-# Development server
+cp .env.example .env.local   # fill in your keys
 npm run dev
-
-# Production build
-npm run build
-
-# Start production server
-npm start
-
-# Lint code
-npm run lint
-npm run lint:fix
 ```
 
-## 🔌 API Reference
+Server starts on http://localhost:3000.
 
-### Authentication
+## Environment Variables
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/auth/login` | User login |
-| `POST` | `/api/auth/register` | User registration |
-| `GET` | `/api/auth/session` | Validate session |
-
-### Content Management
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/posts` | List posts (paginated) |
-| `POST` | `/api/posts` | Create new post |
-| `PUT` | `/api/posts/:id` | Update post |
-| `DELETE` | `/api/posts/:id` | Delete post |
-
-### AI Services
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/ai/analyze` | Analyze content |
-| `POST` | `/api/ai/search` | Semantic search |
-| `GET` | `/api/ai/trends` | Get trending topics |
-
-### Rate Limits
-
-| User Type | Limit |
-|-----------|-------|
-| Authenticated | 100 requests/min |
-| Unauthenticated | 20 requests/min |
-| API keys | 1000 requests/min |
-
-## 🚀 Deployment
-
-### Vercel Deployment
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy to production
-vercel --prod
-
-# Set environment variables
-vercel env add MONGODB_URI production
-vercel env add OPENAI_API_KEY production
+```
+MONGODB_URI=mongodb+srv://...
+CLERK_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
+CLERK_WEBHOOK_SECRET=whsec_...
+GEMINI_API_KEY=AIza...
+HUGGINGFACE_API_KEY=hf_...
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+NEWS_API_KEY=...
 ```
 
-Ensure all environment variables are configured in Vercel project settings.
+## Features
 
-## 🔧 Troubleshooting
+**Posts and comments** — Create location-tagged posts with media attachments. Like, dislike, and comment. Content is automatically scored for misinformation using zero-shot classification and flagged if confidence exceeds 75%.
 
-### Database Connection Issues
+**News tracker** — Semantic search across all posts and comments using Gemini embeddings and cosine similarity. Results are combined with external news articles and summarized by Gemini into a situation report. A background scheduler indexes new content automatically.
 
-```bash
-# Test MongoDB connection
-npm run test:db
+**Aid requests** — Users submit aid requests for a region. Requests move through a status pipeline: pending, approved, denied, received, prepared, shipped, delivered, completed. Admins and special users manage the workflow.
 
-# Verify connection string
-echo $MONGODB_URI | grep mongodb
+**Reports and moderation** — Any user can report a post or comment. Special users see reports in their region, admins see everything. Reports are marked as agreed, disagreed, or read.
+
+**User roles** — Three roles: normal, special, admin. Normal users create content and request aid. Special users moderate their region. Admins have full access including user promotion, content processing triggers, and flagged post review. Users can request role upgrades.
+
+## User Roles
+
+| Role | Access |
+|------|--------|
+| Normal | Create posts, comment, like/dislike, report, request aid, query news |
+| Special | Above + view regional reports, manage regional content |
+| Admin | Above + manage all users, trigger content indexing, view flagged posts |
+
+## API
+
+### Posts
+
+```
+GET    /api/posts                    paginated post feed
+POST   /api/posts                    create post (multipart form data)
+GET    /api/posts/[id]               single post
+POST   /api/posts/[id]/delete        delete post
+POST   /api/posts/[id]/like          like post
+POST   /api/posts/[id]/dislike       dislike post
+GET    /api/posts/[id]/comments      comments on a post
+POST   /api/posts/[id]/comments      add comment
+GET    /api/posts/comments            list comments
+GET    /api/posts/comments/[id]      single comment
+POST   /api/posts/comments/[id]/delete   delete comment
 ```
 
-### Build Failures
+### News Tracker
 
-```bash
-# Clear cache and rebuild
-rm -rf .next
-rm -rf node_modules/.cache
-npm ci
-npm run build
+```
+POST   /api/news-tracker/search          semantic search (query + location)
+POST   /api/news-tracker/query           store query, get AI summary
+GET    /api/news-tracker/history         user query history
+POST   /api/news-tracker/process-content  trigger content indexing (admin)
 ```
 
-### Authentication Errors
+### Aid Requests
 
-1. Verify Clerk dashboard configuration.
-2. Check environment variables.
-3. Validate redirect URIs in Clerk settings.
-4. Clear browser cache and cookies.
+```
+GET    /api/aid-requests              user's aid requests
+POST   /api/aid-requests              create aid request
+GET    /api/aid-requests/all          all requests (admin)
+POST   /api/aid-requests/[id]/approve approve request
+POST   /api/aid-requests/[id]/deny    deny request
+POST   /api/aid-requests/[id]/update  update request status
+```
 
-## 🤝 Contributing
+### Reports
 
-We welcome pull requests! Please open an issue first to discuss proposed changes.
+```
+GET    /api/reports                   reports (role-filtered)
+POST   /api/reports                   submit report
+GET    /api/reports/all               all reports (admin/special)
+POST   /api/reports/handle            handle report
+```
 
-## 📬 Support & Contact
+### Users
 
-- Create an [issue](https://github.com/Devendraxp/esoc/issues/new) for bugs or feature requests.
-- For security concerns, reach out privately via repo contact info.
+```
+GET    /api/users                     list users (admin)
+POST   /api/users                     sync user from Clerk
+GET    /api/users/[id]                user profile
+POST   /api/users/[id]/promote        promote user role
+POST   /api/users/[id]/demote         demote user role
+POST   /api/users/upgrade-request     request role upgrade
+POST   /api/users/upgrade-requests    view upgrade requests (admin)
+```
 
----
+### Other
 
-**Built with Next.js, MongoDB, and AI services.**
+```
+GET    /api/auth/me                   current user info
+GET    /api/location-suggestions      location autocomplete
+POST   /api/webhooks/clerk            Clerk webhook (user events)
+GET    /api/admin/flagged             flagged posts (admin)
+```
+
+## Project Structure
+
+```
+src/
+  app/
+    api/          route handlers for all endpoints
+    dashboard/    admin and special user dashboards
+    posts/        post detail pages
+    profile/      user profile and upgrade request
+    news-tracker/ news search interface
+    create-post/  post creation page
+    apply-aid/    aid request form
+  components/     UI components (cards, sidebar, modals, comments)
+  models/         Mongoose schemas (User, Post, Comment, AidRequest, Report, NewsMemory, NewsQuery)
+  lib/            embedding utilities
+  utils/          Clerk helpers, Cloudinary upload, Gemini client, Hugging Face client, news scheduler
+```
+
+## Notes
+
+- Misinformation scoring uses Hugging Face's zero-shot classification with labels: factual, misinformation, unverified. Posts scoring above 75% on a non-factual label are auto-flagged.
+- The news scheduler runs in the background via middleware initialization. It indexes posts and comments into vector embeddings for semantic search.
+- Clerk webhooks keep the local User model in sync with Clerk's user directory. Events handled: user.created, user.updated, user.deleted.
+- Media uploads go through Cloudinary. Supported types: image, video, audio.
